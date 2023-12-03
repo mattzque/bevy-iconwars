@@ -1,0 +1,4 @@
+node_modules
+output/icons/*.png
+output/*.png
+output/*.json

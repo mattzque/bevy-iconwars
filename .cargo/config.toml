@@ -1,0 +1,5 @@
+[env]
+BEVY_ASSET_ROOT = "."
+
+[build]
+rustflags = ["-Z", "threads=8"]

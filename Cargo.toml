@@ -1,0 +1,29 @@
+[package]
+name = "bevy_iconwars"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[[bin]]
+name = "bevy_iconwars"
+
+# Enable a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
+
+# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
+
+[dependencies]
+bevy = { version = "0.12.1", features = ["animation", "jpeg"] }
+anyhow = "1.0"
+thiserror = "1.0"
+serde = "1.0"
+serde_json = "1.0"
+rand = "0.8"
+
+# cargo build / cargo build --release --no-default-features
+[features]
+default = ["fast-compile"]
+fast-compile = ["bevy/dynamic_linking"]

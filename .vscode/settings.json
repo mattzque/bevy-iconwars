@@ -1,0 +1,23 @@
+{
+    "launches": {
+        "CraftlyRunDebug": "Launch (debug) (bevy_officespace)",
+        "CraftlyRunRelease": "Launch (release) (bevy_officespace)",
+    },
+    "[rust]": {
+        "editor.defaultFormatter": "rust-lang.rust-analyzer",
+        "editor.formatOnSave": true
+    },
+    "[svelte]": {
+        "editor.formatOnSave": true
+    },
+    "[typescript]": {
+        "editor.formatOnSave": true
+    },
+    "rust-analyzer.showUnlinkedFileNotification": false,
+    "rust-analyzer.cargo.runBuildScripts": true,
+    "protoc": {
+        "options": [
+            "--proto_path=${workspaceRoot}/common/proto",
+        ]
+    },
+}
