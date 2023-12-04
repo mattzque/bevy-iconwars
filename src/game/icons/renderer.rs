@@ -24,7 +24,7 @@ use bevy::sprite::{
 };
 use bevy::utils::FloatOrd;
 
-use super::IconInstanceData;
+use super::components::IconInstanceData;
 
 #[derive(Component, Debug)]
 pub struct GpuIconInstanceData {

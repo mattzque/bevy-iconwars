@@ -4,114 +4,42 @@ use bevy::prelude::*;
 use bevy::render::mesh::shape;
 use bevy::render::view::NoFrustumCulling;
 use bevy::sprite::Mesh2dHandle;
+use bevy::window::PrimaryWindow;
 use rand::prelude::*;
 
+use crate::game::icons::components::{
+    IconEntity, IconInstanceData, IconRenderEntity, IconSheetRef, IconTransform, SheetIndex,
+};
+use crate::game::icons::resources::{HoveredIcon, SpatialIndexResource};
+
 use super::assets::icons::IconSheetAsset;
+use super::camera::CameraTag;
 use super::states::GameState;
 
+mod components;
 mod renderer;
+mod resources;
+mod spatial;
+
+pub use resources::IconSheetResource;
 
 pub const ICON_SIZE: f32 = 32.0;
-pub const ICON_MIN_DISTANCE: f32 = 45.25;
-
-#[derive(Resource, Debug)]
-pub struct IconSheetResource {
-    pub handle: Handle<IconSheetAsset>,
-    pub texture_array: Option<Handle<Image>>,
-}
+pub const ICON_MIN_DISTANCE: f32 = 45.25 + 15.0;
+pub const SPATIAL_GRID_SIZE: f32 = 256.0;
 
 pub struct IconPlugin;
 
 impl Plugin for IconPlugin {
     fn build(&self, app: &mut App) {
+        app.insert_resource(HoveredIcon::default());
         app.add_plugins(renderer::IconRendererPlugin);
         app.add_systems(OnEnter(GameState::GameLoading), init_icons_system);
         app.add_systems(
             Update,
-            debug_icons_system.run_if(in_state(GameState::GameLoading)),
+            (debug_icons_system, update_hovered_icon_system)
+                .run_if(in_state(GameState::GameRunning)),
         );
     }
-}
-
-/// Thats a LOT of entities!
-#[derive(Component, Debug)]
-pub struct IconEntity;
-
-/// Render all entities using this single entity, thats not cheating, right? =)
-#[derive(Component, Debug)]
-pub struct IconRenderEntity;
-
-#[derive(Component, Debug)]
-pub struct IconInstanceData {
-    pub texture: Handle<Image>,
-    /// Number of instances
-    pub n_instances: u32,
-    /// Transforms of each icon, x, y and rotation.
-    pub transforms: Vec<Vec3>,
-    /// References which sheet and the UV coordinate in the sheet
-    pub indices: Vec<SheetIndex>,
-}
-
-#[derive(Debug)]
-pub struct SheetIndex {
-    pub sheet_index: u32,
-    pub tile_uv: Vec2,
-}
-
-impl IconInstanceData {
-    // vec3 (transform x, y, angle) + vec2 (uv) + uint (sheet index)
-    pub const INSTANCE_LEN: u64 = ((std::mem::size_of::<f32>() * 3)
-        + std::mem::size_of::<u32>()
-        + (std::mem::size_of::<f32>() * 2)) as u64;
-
-    pub fn new(texture: Handle<Image>, transforms: Vec<Vec3>, indices: Vec<SheetIndex>) -> Self {
-        Self {
-            texture,
-            n_instances: transforms.len() as u32,
-            transforms,
-            indices,
-        }
-    }
-
-    pub fn instances_data(&self) -> Vec<u8> {
-        let mut data = Vec::new();
-        for index in 0..self.n_instances {
-            let Vec3 { x, y, z } = &self.transforms[index as usize];
-            let SheetIndex {
-                sheet_index,
-                tile_uv,
-            } = &self.indices[index as usize];
-
-            let mut record = Vec::new();
-            record.extend_from_slice(&x.to_le_bytes());
-            record.extend_from_slice(&y.to_le_bytes());
-            record.extend_from_slice(&z.to_le_bytes());
-            record.extend_from_slice(&sheet_index.to_le_bytes());
-            record.extend_from_slice(&tile_uv.x.to_le_bytes());
-            record.extend_from_slice(&tile_uv.y.to_le_bytes());
-            // println!("uv.z: {:?} {:?}", tile_uv.x, tile_uv.x.to_le_bytes());
-            // println!("uv.x: {:?} {:?}", tile_uv.y, tile_uv.y.to_le_bytes());
-            // println!("record: {:?}", record);
-            // println!("record: {:?}", record.len());
-            // assert_eq!(record.len(), Self::INSTANCE_LEN as usize);
-            data.extend_from_slice(&record);
-        }
-        // println!("indices: {:?}", self.indices);
-        data
-    }
-}
-
-#[derive(Component, Debug)]
-pub struct IconSheetRef {
-    pub sheet_index: usize,
-    pub icon_index: usize,
-    pub icon_name: String,
-}
-
-#[derive(Component, Debug)]
-pub struct IconTransform {
-    pub position: Vec2,
-    pub rotation: f32,
 }
 
 fn init_icons_system(
@@ -119,7 +47,9 @@ fn init_icons_system(
     resource: Res<IconSheetResource>,
     assets: Res<Assets<IconSheetAsset>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut state: ResMut<NextState<GameState>>,
 ) {
+    let (bounds_min, bounds_max) = (Vec2::new(-2000.0, -2000.0), Vec2::new(2000.0, 2000.0));
     let IconSheetAsset(sheets) = assets.get(&resource.handle).unwrap();
     let mut rng = rand::thread_rng();
     let mut positions = Vec::new();
@@ -137,8 +67,8 @@ fn init_icons_system(
                 loop {
                     // candidate:
                     let position = Vec2::new(
-                        rng.gen_range(-2000.0..2000.0),
-                        rng.gen_range(-2000.0..2000.0),
+                        rng.gen_range(bounds_min.x..bounds_max.x),
+                        rng.gen_range(bounds_min.y..bounds_max.y),
                     );
 
                     // search for collisions:
@@ -180,15 +110,16 @@ fn init_icons_system(
     });
     info!("Fitted {} icons in {:?}", count, start.elapsed());
 
-    let (transforms, _entities): (Vec<Vec3>, Vec<Entity>) = positions
-        .into_iter()
-        .map(|(position, rotation, components)| {
-            (
-                Vec3::new(position.x, position.y, rotation),
-                commands.spawn(components).id(),
-            )
-        })
-        .unzip();
+    let mut spatial_index = spatial::SpatialIndex::new(bounds_min, bounds_max, SPATIAL_GRID_SIZE);
+
+    let transforms = positions
+        .iter()
+        .map(|(position, rotation, _)| Vec3::new(position.x, position.y, *rotation))
+        .collect();
+    positions.into_iter().for_each(|(position, _, components)| {
+        let entity = commands.spawn(components).id();
+        spatial_index.insert(position, entity);
+    });
 
     info!("Spawned {} icons", count);
 
@@ -207,11 +138,44 @@ fn init_icons_system(
         IconInstanceData::new(resource.texture_array.clone().unwrap(), transforms, indices),
         NoFrustumCulling,
     ));
+    commands.insert_resource(SpatialIndexResource(spatial_index));
+
+    state.set(GameState::GameRunning);
 }
 
-fn debug_icons_system(query: Query<&IconTransform>, mut gizmos: Gizmos) {
-    for IconTransform { position, rotation } in query.iter() {
-        gizmos.rect_2d(*position, *rotation, Vec2::splat(ICON_SIZE), Color::RED);
-        gizmos.circle_2d(*position, ICON_SIZE / 2.0, Color::BLUE);
+fn debug_icons_system(
+    query: Query<(Entity, &IconTransform)>,
+    hovered: Res<HoveredIcon>,
+    mut gizmos: Gizmos,
+) {
+    for (entity, IconTransform { position, .. }) in query.iter() {
+        // gizmos.rect_2d(*position, *rotation, Vec2::splat(ICON_SIZE), Color::RED);
+        gizmos.circle_2d(
+            *position,
+            ICON_SIZE / 2.0 + 8.0,
+            if hovered.0 == Some(entity) {
+                Color::RED
+            } else {
+                Color::BLUE
+            },
+        );
+    }
+}
+
+fn update_hovered_icon_system(
+    mut commands: Commands,
+    window: Query<&Window, With<PrimaryWindow>>,
+    camera: Query<(&Camera, &GlobalTransform), With<CameraTag>>,
+    index: Res<SpatialIndexResource>,
+) {
+    let (camera, camera_transform) = camera.single();
+    let window = window.single();
+    if let Some(world_position) = window
+        .cursor_position()
+        .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+        .map(|ray| ray.origin.truncate())
+    {
+        let maybe_entity = index.0.query(world_position, ICON_SIZE / 2.0 + 8.0).next();
+        commands.insert_resource(HoveredIcon(maybe_entity));
     }
 }
