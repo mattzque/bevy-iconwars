@@ -13,6 +13,10 @@ impl Plugin for CameraPlugin {
 
 fn setup_cameras(mut commands: Commands) {
     commands.spawn((Camera2dBundle {
+        projection: OrthographicProjection {
+            scale: 1.7,
+            ..Default::default()
+        },
         camera: Camera {
             order: 1,
             is_active: true,

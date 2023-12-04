@@ -18,6 +18,8 @@ pub struct Icon {
 #[serde(rename_all = "camelCase")]
 pub struct IconSheetFile {
     pub filename: String,
+    pub width: usize,
+    pub height: usize,
     pub tile_width: usize,
     pub tile_height: usize,
     pub tiles: Vec<Icon>,
@@ -27,6 +29,8 @@ pub struct IconSheetFile {
 #[derive(Debug)]
 pub struct IconSheet {
     pub handle: Handle<Image>,
+    pub width: usize,
+    pub height: usize,
     pub tile_width: usize,
     pub tile_height: usize,
     pub tiles: Vec<Icon>,
@@ -73,6 +77,8 @@ impl AssetLoader for IconSheetLoader {
                     let handle: Handle<Image> = load_context.load(&sheet.filename);
                     IconSheet {
                         handle,
+                        width: sheet.width,
+                        height: sheet.height,
                         tile_width: sheet.tile_width,
                         tile_height: sheet.tile_height,
                         tiles: sheet.tiles,

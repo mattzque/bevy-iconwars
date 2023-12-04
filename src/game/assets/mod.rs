@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use bevy::asset::RecursiveDependencyLoadState;
 use bevy::prelude::*;
+use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 
 use self::icons::IconSheetAsset;
 
@@ -34,7 +35,10 @@ fn load_assets_system(
     mut state: ResMut<NextState<GameState>>,
 ) {
     let icons: Handle<IconSheetAsset> = server.load("icons.icon.json");
-    commands.insert_resource(IconSheetResource(icons.clone()));
+    commands.insert_resource(IconSheetResource {
+        handle: icons.clone(),
+        texture_array: None,
+    });
     commands.insert_resource(PendingAssets(HashSet::from_iter(vec![icons.untyped()])));
     state.set(GameState::AssetsLoading);
 }
@@ -76,18 +80,42 @@ fn update_loading_system(
 }
 
 fn assets_loaded_system(
-    server: Res<AssetServer>,
-    images: Res<Assets<Image>>,
     mut state: ResMut<NextState<GameState>>,
+    mut resource: ResMut<IconSheetResource>,
+    assets: Res<Assets<IconSheetAsset>>,
+    mut images: ResMut<Assets<Image>>,
 ) {
-    images.iter().for_each(|(handle, image)| {
-        info!(
-            "Loaded image: {:?} ({}x{})",
-            server.get_path(handle),
-            image.width(),
-            image.height(),
-        );
+    let IconSheetAsset(sheets) = assets.get(&resource.handle).unwrap();
+    let (width, height) = sheets
+        .first()
+        .map(|sheet| (sheet.width, sheet.height))
+        .unwrap();
+    let textures = sheets
+        .iter()
+        .flat_map(|sheet| images.get(sheet.handle.id()))
+        .collect::<Vec<&Image>>();
+
+    let mut data = Vec::new();
+    textures.iter().for_each(|texture| {
+        // println!("texture format: {:?}", texture.texture_descriptor);
+        data.extend_from_slice(&texture.data);
     });
+
+    // create array texture:
+    let texture_array = Image::new(
+        Extent3d {
+            width: width as u32,
+            height: height as u32,
+            depth_or_array_layers: textures.len() as u32,
+        },
+        TextureDimension::D2,
+        data,
+        // TextureFormat::Rgba8UnormSrgb,
+        TextureFormat::Rgba8Unorm,
+        // TextureFormat::// Rgba8UnormSrgb,
+    );
+    let texture_array_handle = images.add(texture_array);
+    resource.texture_array = Some(texture_array_handle);
 
     state.set(GameState::GameLoading);
 }

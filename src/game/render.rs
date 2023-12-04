@@ -14,6 +14,7 @@ impl Plugin for RenderPlugin {
 }
 
 fn spawn_render_globals(mut commands: Commands) {
+    commands.insert_resource(Msaa::Sample4);
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
         brightness: 0.9,

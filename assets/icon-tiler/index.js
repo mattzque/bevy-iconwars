@@ -90,7 +90,7 @@ async function createAndSaveSpriteSheet(icons, filename) {
         let files = filenames.slice(files_i, files_i + tiles);
         const filename = path.join('output', `icons_${i}.png`);
         let meta = await createAndSaveSpriteSheet(files, filename);
-        metas.push({ filename: path.basename(filename), tiles: meta, tileWidth: SIZE, tileHeight: SIZE });
+        metas.push({ filename: path.basename(filename), tiles: meta, width: TEXTURE_SIZE, height: TEXTURE_SIZE, tileWidth: SIZE, tileHeight: SIZE });
     }
     await fs.writeFile(path.join('output', `icons.icon.json`), JSON.stringify(metas));
 })();
