@@ -39,3 +39,9 @@ License: [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) + MIT
 * [`serde`](https://crates.io/crates/serde) (MIT OR Apache-2.0)
 * [`serde_json`](https://crates.io/crates/serde_json) (MIT OR Apache-2.0)
 * [`rand`](https://crates.io/crates/rand) (MIT OR Apache-2.0)
+
+### Other
+
+* https://github.com/bevyengine/bevy_github_ci_template
+* https://github.com/mattzque/bevy-officespace
+* https://github.com/mattzque/bevy-boids-experiment

@@ -25,7 +25,7 @@ fn main() {
                     }),
                     ..Default::default()
                 }),
-            FrameTimeDiagnosticsPlugin::default(),
+            FrameTimeDiagnosticsPlugin,
             LogDiagnosticsPlugin::default(),
         ))
         .add_plugins(game::GamePlugin)

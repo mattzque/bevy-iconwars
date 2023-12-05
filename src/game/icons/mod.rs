@@ -168,16 +168,20 @@ fn debug_icons_system(
     hovered: Res<HoveredIcon>,
     mut gizmos: Gizmos,
 ) {
-    for (entity, IconTransform { position, .. }) in query.iter() {
-        // gizmos.rect_2d(*position, *rotation, Vec2::splat(ICON_SIZE), Color::RED);
+    for (entity, IconTransform { position, rotation }) in query.iter() {
+        gizmos.rect_2d(
+            *position,
+            *rotation,
+            Vec2::splat(ICON_SIZE),
+            if hovered.0 == Some(entity) {
+                Color::RED
+            } else {
+                Color::BLACK
+            },
+        );
         // gizmos.circle_2d(
         //     *position,
         //     ICON_SIZE / 2.0 + 8.0,
-        //     if hovered.0 == Some(entity) {
-        //         Color::RED
-        //     } else {
-        //         Color::BLUE
-        //     },
         // );
     }
 }
