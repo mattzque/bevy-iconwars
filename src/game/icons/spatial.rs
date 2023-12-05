@@ -34,7 +34,7 @@ where
         (x, y)
     }
 
-    pub fn insert(&mut self, position: Vec2, entity: T) {
+    pub fn insert(&mut self, entity: T, position: Vec2) {
         let key = self.key(position);
         if let Some((old_key, old_position)) = self.by_entity.get(&entity) {
             if old_key == &key && *old_position == position {
@@ -47,7 +47,11 @@ where
         self.by_entity.insert(entity, (key, position));
     }
 
-    pub fn query(&self, position: Vec2, distance: f32) -> impl Iterator<Item = T> + '_ {
+    pub fn query(
+        &self,
+        position: Vec2,
+        distance: f32,
+    ) -> impl Iterator<Item = (T, Vec2, f32)> + '_ {
         let grid_distance = (distance / self.cell_size).ceil() as i16;
         let key = self.key(position);
         let mut results = Vec::new();
@@ -61,8 +65,9 @@ where
 
         results.into_iter().flat_map(move |entity| {
             let (_, other) = self.by_entity.get(entity).unwrap();
-            if (position - *other).length() <= distance {
-                Some(entity.clone())
+            let distance_to_other = (position - *other).length();
+            if distance_to_other <= distance {
+                Some((entity.clone(), *other, distance_to_other))
             } else {
                 None
             }
@@ -94,17 +99,26 @@ mod tests {
     #[test]
     fn test_spatial() {
         let mut index = SpatialIndex::new(Vec2::new(-100.0, 100.0), Vec2::new(-100.0, 100.0), 10.0);
-        index.insert(Vec2::new(0.0, 0.0), 1);
-        index.insert(Vec2::new(-20.0, -20.0), 2);
-        index.insert(Vec2::new(20.0, 20.0), 3);
+        index.insert(1, Vec2::new(0.0, 0.0));
+        index.insert(2, Vec2::new(-20.0, -20.0));
+        index.insert(3, Vec2::new(20.0, 20.0));
         assert_eq!(
-            index.query(Vec2::new(0.5, 0.5), 10.0).collect::<Vec<_>>(),
+            index
+                .query(Vec2::new(0.5, 0.5), 10.0)
+                .map(|(e, _, _)| e)
+                .collect::<Vec<_>>(),
             &[1]
         );
-        let mut results = index.query(Vec2::new(0.5, 0.5), 50.0).collect::<Vec<_>>();
+        let mut results = index
+            .query(Vec2::new(0.5, 0.5), 50.0)
+            .map(|(e, _, _)| e)
+            .collect::<Vec<_>>();
         results.sort();
         assert_eq!(results, &[1, 2, 3]);
-        let mut results = index.query(Vec2::new(20.0, 20.0), 30.0).collect::<Vec<_>>();
+        let mut results = index
+            .query(Vec2::new(20.0, 20.0), 30.0)
+            .map(|(e, _, _)| e)
+            .collect::<Vec<_>>();
         results.sort();
         assert_eq!(results, &[1, 3]);
     }

@@ -5,12 +5,12 @@
             "name": "Launch (debug)",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceRoot}/target/debug/bevy_officespace",
+            "program": "${workspaceRoot}/target/debug/bevy_iconwars",
             "preLaunchTask": "rust: cargo build",
             "args": [ ],
             "cwd": "${workspaceRoot}",
             "env": {
-                "LD_LIBRARY_PATH": "target/debug/deps:~/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/",
+                "LD_LIBRARY_PATH": "target/debug/deps:/home/apoc/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/",
                 "CARGO_MANIFEST_DIR": "${workspaceRoot}",
             }
         },
@@ -18,7 +18,7 @@
             "name": "Launch (release)",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceRoot}/target/release/bevy_officespace",
+            "program": "${workspaceRoot}/target/release/bevy_iconwars",
             "preLaunchTask": "cargo-build-release",
             "args": [ ],
             "cwd": "${workspaceRoot}",

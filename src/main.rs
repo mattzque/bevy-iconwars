@@ -1,5 +1,6 @@
 use bevy::{
     app::{App, PluginGroup},
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     log::LogPlugin,
     window::{PresentMode, Window, WindowPlugin},
     DefaultPlugins,
@@ -8,7 +9,7 @@ mod game;
 
 fn main() {
     App::new()
-        .add_plugins(
+        .add_plugins((
             DefaultPlugins
                 .set(LogPlugin {
                     filter: "info,wgpu_core=warn,wgpu_hal=warn,bevy_iconwars=debug".into(),
@@ -24,7 +25,9 @@ fn main() {
                     }),
                     ..Default::default()
                 }),
-        )
+            FrameTimeDiagnosticsPlugin::default(),
+            LogDiagnosticsPlugin::default(),
+        ))
         .add_plugins(game::GamePlugin)
         .run();
 }

@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use bevy::prelude::*;
 
 /// Thats a LOT of entities!
@@ -14,9 +16,8 @@ pub struct IconInstanceData {
     /// Number of instances
     pub n_instances: u32,
     /// Transforms of each icon, x, y and rotation.
-    pub transforms: Vec<Vec3>,
     /// References which sheet and the UV coordinate in the sheet
-    pub indices: Vec<SheetIndex>,
+    pub instances: BTreeMap<Entity, (Vec3, SheetIndex)>,
 }
 
 #[derive(Debug)]
@@ -31,24 +32,24 @@ impl IconInstanceData {
         + std::mem::size_of::<u32>()
         + (std::mem::size_of::<f32>() * 2)) as u64;
 
-    pub fn new(texture: Handle<Image>, transforms: Vec<Vec3>, indices: Vec<SheetIndex>) -> Self {
+    pub fn new(texture: Handle<Image>, instances: Vec<(Entity, (Vec3, SheetIndex))>) -> Self {
         Self {
             texture,
-            n_instances: transforms.len() as u32,
-            transforms,
-            indices,
+            n_instances: instances.len() as u32,
+            instances: BTreeMap::from_iter(instances),
         }
     }
 
     pub fn instances_data(&self) -> Vec<u8> {
         let mut data = Vec::new();
-        for index in 0..self.n_instances {
-            let Vec3 { x, y, z } = &self.transforms[index as usize];
-            let SheetIndex {
+        for (
+            Vec3 { x, y, z },
+            SheetIndex {
                 sheet_index,
                 tile_uv,
-            } = &self.indices[index as usize];
-
+            },
+        ) in self.instances.values()
+        {
             let mut record = Vec::new();
             record.extend_from_slice(&x.to_le_bytes());
             record.extend_from_slice(&y.to_le_bytes());
@@ -59,6 +60,14 @@ impl IconInstanceData {
             data.extend_from_slice(&record);
         }
         data
+    }
+
+    pub fn update_transform(&mut self, entity: Entity, transform: Vec3) {
+        if let Some(value) = self.instances.get_mut(&entity) {
+            value.0 = transform;
+        } else {
+            panic!("Entity {:?} not found in IconInstanceData", entity);
+        }
     }
 }
 
@@ -74,3 +83,6 @@ pub struct IconTransform {
     pub position: Vec2,
     pub rotation: f32,
 }
+
+#[derive(Component, Clone, Debug)]
+pub struct IconVelocity(pub Vec2);
