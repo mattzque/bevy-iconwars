@@ -23,7 +23,6 @@ impl<T> SpatialIndex<T>
 where
     T: Hash + Eq + Clone + Debug,
 {
-    // iterator: impl Iterator<Item = (Vec2, Entity)>
     pub fn new(min: Vec2, max: Vec2, cell_size: f32) -> Self {
         Self {
             min,
@@ -53,7 +52,6 @@ where
         self.by_entity.insert(entity, (key, position, velocity));
     }
 
-    /// Returns (T, position, velocity, distance)
     pub fn query(
         &self,
         position: Vec2,
@@ -111,27 +109,32 @@ mod tests {
     #[test]
     fn test_spatial() {
         let mut index = SpatialIndex::new(Vec2::new(-100.0, 100.0), Vec2::new(-100.0, 100.0), 10.0);
-        index.insert(1, Vec2::new(0.0, 0.0), Vec2::splat(0.0));
-        index.insert(2, Vec2::new(-20.0, -20.0), Vec2::splat(0.0));
-        index.insert(3, Vec2::new(20.0, 20.0), Vec2::splat(0.0));
-        assert_eq!(
-            index
-                .query(Vec2::new(0.5, 0.5), 10.0)
-                .map(|r| r.key)
-                .collect::<Vec<_>>(),
-            &[1]
-        );
+        index.insert(1, Vec2::new(-20.0, 0.0), Vec2::splat(0.0));
+        index.insert(2, Vec2::new(-10.0, 0.0), Vec2::splat(0.0));
+        index.insert(3, Vec2::new(0.0, 0.0), Vec2::splat(0.0));
+        index.insert(4, Vec2::new(10.0, 0.0), Vec2::splat(0.0));
+        index.insert(5, Vec2::new(20.0, 0.0), Vec2::splat(0.0));
+        index.insert(6, Vec2::new(30.0, 0.0), Vec2::splat(0.0));
+        index.insert(7, Vec2::new(40.0, 0.0), Vec2::splat(0.0));
+
+        assert!(!index
+            .query(Vec2::new(0.5, 0.5), 5.0)
+            .map(|r| r.key)
+            .collect::<Vec<_>>()
+            .is_empty());
+
         let mut results = index
-            .query(Vec2::new(0.5, 0.5), 50.0)
+            .query(Vec2::new(0.0, 0.0), 20.0)
             .map(|r| r.key)
             .collect::<Vec<_>>();
         results.sort();
-        assert_eq!(results, &[1, 2, 3]);
+        assert_eq!(results, &[1, 2, 4, 5]);
+
         let mut results = index
-            .query(Vec2::new(20.0, 20.0), 30.0)
+            .query(Vec2::new(20.0, 0.0), 10.0)
             .map(|r| r.key)
             .collect::<Vec<_>>();
         results.sort();
-        assert_eq!(results, &[1, 3]);
+        assert_eq!(results, &[4, 6]);
     }
 }

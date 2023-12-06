@@ -35,10 +35,10 @@ fn update_key_input(
 ) {
     let dt = time.delta_seconds();
     if let Ok((_entity, mut transform, mut velocity_)) = query.get_single_mut() {
-        let turn = if keys.any_pressed([KeyCode::Left, KeyCode::Q]) {
+        let turn = if keys.any_pressed([KeyCode::Left, KeyCode::A]) {
             // turn left
             Some(1.0)
-        } else if keys.any_pressed([KeyCode::Right, KeyCode::E]) {
+        } else if keys.any_pressed([KeyCode::Right, KeyCode::D]) {
             // turn right
             Some(-1.0)
         } else {
@@ -50,25 +50,10 @@ fn update_key_input(
             transform.rotation = normalize_angle(transform.rotation);
         }
 
-        // get forward and strafe vectors from camera rotation
         let rotation = transform.rotation;
-        // // vector pointing forwards relative to the camera rotation, ignoring the y axis
-        // let forward_vector = {
-        //     let f = rotation.mul_vec3(Vec3::Z).normalize();
-        //     Vec3::new(f.x, 0.0, f.z).normalize()
-        // };
-        // // vector pointing left/right horizontally relative to the camera rotation
-        // let strafe_vector = Quat::from_rotation_y(90.0f32.to_radians())
-        //     .mul_vec3(forward_vector)
-        //     .normalize();
 
         let r = std::f32::consts::PI / 2.0;
-        // Vector pointing forwards relative to the camera rotation
         let forward_vector = Vec2::new((rotation - r).cos(), (rotation - r).sin());
-
-        // Vector pointing left/right horizontally relative to the camera rotation
-        // In 2D, this is a 90 degrees (or π/2 radians) rotation of the forward vector
-        let strafe_vector = Vec2::new(-forward_vector.y, forward_vector.x);
 
         let mut accel = Vec2::ZERO;
         if keys.any_pressed([KeyCode::Up, KeyCode::W]) {
@@ -78,14 +63,6 @@ fn update_key_input(
         if keys.any_pressed([KeyCode::Down, KeyCode::S]) {
             // backward
             accel += forward_vector * 1.0;
-        }
-        if keys.pressed(KeyCode::A) {
-            // strafe left
-            accel += strafe_vector * -1.0;
-        }
-        if keys.pressed(KeyCode::D) {
-            // strafe right
-            accel += strafe_vector * 1.0;
         }
 
         // normalized and scaled by acceleration setting
@@ -122,6 +99,5 @@ fn update_key_input(
         };
 
         velocity_.0 = velocity;
-        // println!("updated velocity: {:?}", velocity);
     }
 }

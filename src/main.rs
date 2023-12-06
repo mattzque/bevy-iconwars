@@ -20,8 +20,7 @@ fn main() {
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         title: "Icon Wars".to_string(),
-                        // present_mode: PresentMode::AutoVsync,
-                        present_mode: PresentMode::Immediate,
+                        present_mode: PresentMode::AutoVsync,
                         fit_canvas_to_parent: true,
                         resizable: true,
                         ..Default::default()
