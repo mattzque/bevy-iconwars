@@ -23,8 +23,3 @@ serde = "1.0"
 serde_json = "1.0"
 rand = "0.8"
 bevy_egui = "0.23"
-
-# cargo build / cargo build --release --no-default-features
-[features]
-default = ["fast-compile"]
-fast-compile = ["bevy/dynamic_linking"]

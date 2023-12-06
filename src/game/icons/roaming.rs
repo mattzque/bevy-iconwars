@@ -15,7 +15,7 @@ impl Plugin for IconRoamingPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (update_icon_velocity, apply_icon_velocity).run_if(in_state(GameState::GameRunning)),
+            update_icon_roaming_velocity.run_if(in_state(GameState::GameRunning)),
         );
     }
 }
@@ -264,7 +264,7 @@ fn get_icon_velocity(
     limit_vec2(*velocity + acceleration, settings.max_speed)
 }
 
-fn update_icon_velocity(
+fn update_icon_roaming_velocity(
     time: Res<Time>,
     mut timer: ResMut<UpdateTimer>,
     settings: Res<SettingsResource>,
@@ -305,18 +305,4 @@ fn update_icon_velocity(
     }
 
     debug!("update_icon_velocity in {:?}", start.elapsed());
-}
-
-pub fn apply_icon_velocity(
-    time: Res<Time>,
-    settings: Res<SettingsResource>,
-    mut spatial_index: ResMut<SpatialIndexResource>,
-    mut query: Query<(Entity, &mut IconTransform, &IconVelocity)>,
-) {
-    for (entity, mut position, velocity) in query.iter_mut() {
-        position.position += velocity.0 * (time.delta_seconds() * settings.velocity_time_scale);
-        // rotation/angle in radians from velocity vector...
-        position.rotation = velocity.0.y.atan2(velocity.0.x);
-        spatial_index.0.insert(entity, position.position);
-    }
 }

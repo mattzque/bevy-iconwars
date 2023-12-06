@@ -16,6 +16,7 @@ use self::resources::UpdateTimer;
 
 use super::assets::icons::IconSheetAsset;
 use super::camera::CameraTag;
+use super::settings::SettingsResource;
 use super::states::GameState;
 
 mod components;
@@ -44,8 +45,10 @@ impl Plugin for IconPlugin {
             (
                 debug_icons_system,
                 update_hovered_icon_system,
+                apply_icon_velocity,
                 update_icon_instance_data,
             )
+                .chain()
                 .run_if(in_state(GameState::GameRunning)),
         );
     }
@@ -215,5 +218,19 @@ fn update_icon_instance_data(
     let mut instance_data = instance_data.get_single_mut().unwrap();
     for (entity, IconTransform { position, rotation }) in &query {
         instance_data.update_transform(entity, Vec3::new(position.x, position.y, *rotation));
+    }
+}
+
+pub fn apply_icon_velocity(
+    time: Res<Time>,
+    settings: Res<SettingsResource>,
+    mut spatial_index: ResMut<SpatialIndexResource>,
+    mut query: Query<(Entity, &mut IconTransform, &IconVelocity)>,
+) {
+    for (entity, mut position, velocity) in query.iter_mut() {
+        position.position += velocity.0 * (time.delta_seconds() * settings.velocity_time_scale);
+        // rotation/angle in radians from velocity vector...
+        position.rotation = velocity.0.y.atan2(velocity.0.x);
+        spatial_index.0.insert(entity, position.position);
     }
 }
