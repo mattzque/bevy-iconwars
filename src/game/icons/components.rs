@@ -6,6 +6,12 @@ use bevy::prelude::*;
 #[derive(Component, Debug)]
 pub struct IconEntity;
 
+#[derive(Component, Debug)]
+pub struct IconPlayerCircle;
+
+#[derive(Component, Debug)]
+pub struct IconHoveredCircle;
+
 /// Render all entities using this single entity, thats not cheating, right? =)
 #[derive(Component, Debug)]
 pub struct IconRenderEntity;

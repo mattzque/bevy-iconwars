@@ -21,7 +21,7 @@ function getIconSvg(icon) {
           viewBox="0 0 ${width} ${height}"
           xmlns="http://www.w3.org/2000/svg"
           xmlns:xlink="http://www.w3.org/1999/xlink">
-            <path d="${path}" fill="white" />
+            <path d="${path}" fill="#56837f" />
         </svg>
     `;
 }
@@ -41,7 +41,8 @@ const promises = icons.map(async (icon) => {
 });
 
 const TEXTURE_SIZE = 2048;
-const TEXTURE_TILES = TEXTURE_SIZE / SIZE;
+const TEXTURE_GAP = 4; // 2px on each side
+const TEXTURE_TILES = Math.floor(TEXTURE_SIZE / (SIZE + TEXTURE_GAP));
 
 async function createAndSaveSpriteSheet(icons, filename) {
     let image = sharp({
@@ -59,15 +60,17 @@ async function createAndSaveSpriteSheet(icons, filename) {
     icons.forEach((filename, index) => {
         const row = Math.floor(index / TEXTURE_TILES);
         const col = index % TEXTURE_TILES;
+        const y = Math.floor(row * (SIZE + TEXTURE_GAP) + TEXTURE_GAP / 2.0);
+        const x = Math.floor(col * (SIZE + TEXTURE_GAP) + TEXTURE_GAP / 2.0);
         composites.push({
             input: filename,
-            top: row * SIZE,
-            left: col * SIZE
+            top: y,
+            left: x,
         });
         tiles.push({
             name: path.basename(filename, path.extname(filename)),
-            x: col * SIZE,
-            y: row * SIZE
+            x,
+            y,
         });
     });
 

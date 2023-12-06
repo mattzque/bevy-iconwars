@@ -5,6 +5,7 @@ use std::hash::Hash;
 
 type GridKey = (i16, i16);
 
+#[derive(Debug, Clone)]
 pub struct SpatialQueryResult<'a, T> {
     pub key: T,
     pub position: &'a Vec2,

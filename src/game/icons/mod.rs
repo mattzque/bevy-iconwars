@@ -5,10 +5,12 @@ use bevy::render::view::NoFrustumCulling;
 use bevy::sprite::Mesh2dHandle;
 use bevy::utils::Instant;
 use bevy::window::PrimaryWindow;
+use bevy_prototype_lyon::prelude::*;
 use rand::prelude::*;
 
 use crate::game::icons::components::{
-    IconEntity, IconInstanceData, IconRenderEntity, IconSheetRef, IconVelocity, SheetIndex,
+    IconEntity, IconHoveredCircle, IconInstanceData, IconPlayerCircle, IconRenderEntity,
+    IconSheetRef, IconVelocity, SheetIndex,
 };
 use crate::game::icons::resources::{HoveredIcon, SpatialIndexResource};
 
@@ -49,7 +51,6 @@ impl Plugin for IconPlugin {
         app.add_systems(
             Update,
             (
-                debug_icons_system,
                 update_hovered_icon_system,
                 apply_icon_velocity,
                 update_icon_instance_data,
@@ -79,6 +80,8 @@ fn init_icons_system(
     let mut positions = Vec::new();
     let mut textures = Vec::new();
     let mut count = 0;
+
+    let mut player_position = Vec2::ZERO;
 
     let mut spatial_index = spatial::SpatialIndex::new(*bounds_min, *bounds_max, SPATIAL_GRID_SIZE);
 
@@ -115,6 +118,9 @@ fn init_icons_system(
                     }
 
                     let is_player = icon.name == "rust";
+                    if is_player {
+                        player_position = position;
+                    }
 
                     let rotation = (rng.gen_range(0.0..360.0) as f32).to_radians();
                     let initial_speed = 1.0;
@@ -187,37 +193,53 @@ fn init_icons_system(
         NoFrustumCulling,
         NoAutomaticBatching,
     ));
+
+    // TODO refactor
+    let mut builder = GeometryBuilder::new();
+    builder = builder.add(&shapes::Circle {
+        radius: ICON_SIZE / 2.0 + 8.0,
+        center: Vec2::ZERO,
+    });
+    commands.spawn((
+        ShapeBundle {
+            path: builder.build(),
+            spatial: SpatialBundle {
+                transform: Transform::from_translation(Vec3::new(
+                    player_position.x,
+                    player_position.y,
+                    1.0,
+                )),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        Stroke::new(Color::hex("#444c56").unwrap(), 1.0),
+        IconPlayerCircle,
+    ));
+
+    // TODO refactor
+    let mut builder = GeometryBuilder::new();
+    builder = builder.add(&shapes::Circle {
+        radius: ICON_SIZE / 2.0 + 8.0,
+        center: Vec2::ZERO,
+    });
+    commands.spawn((
+        ShapeBundle {
+            path: builder.build(),
+            spatial: SpatialBundle {
+                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
+                visibility: Visibility::Hidden,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        Stroke::new(Color::hex("#444c56").unwrap(), 1.0),
+        IconHoveredCircle,
+    ));
+
     commands.insert_resource(SpatialIndexResource(spatial_index));
 
     state.set(GameState::GameRunning);
-}
-
-fn debug_icons_system(
-    query: Query<(Entity, &IconTransform)>,
-    hovered: Res<HoveredIcon>,
-    mut gizmos: Gizmos,
-) {
-    for (entity, IconTransform { position, .. }) in query.iter() {
-        // gizmos.rect_2d(
-        //     *position,
-        //     *rotation,
-        //     Vec2::splat(ICON_SIZE),
-        //     if hovered.0 == Some(entity) {
-        //         Color::RED
-        //     } else {
-        //         Color::BLACK
-        //     },
-        // );
-        gizmos.circle_2d(
-            *position,
-            ICON_SIZE / 2.0 + 8.0,
-            if hovered.0 == Some(entity) {
-                Color::RED
-            } else {
-                Color::BLACK
-            },
-        );
-    }
 }
 
 fn update_hovered_icon_system(
@@ -225,6 +247,7 @@ fn update_hovered_icon_system(
     window: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform), With<CameraTag>>,
     index: Res<SpatialIndexResource>,
+    mut hovered_circle: Query<(&mut Visibility, &mut Transform), With<IconHoveredCircle>>,
 ) {
     let (camera, camera_transform) = camera.single();
     let window = window.single();
@@ -233,12 +256,22 @@ fn update_hovered_icon_system(
         .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
         .map(|ray| ray.origin.truncate())
     {
-        let maybe_entity = index
+        let threshold = 16.0;
+        let result = index
             .0
-            .query(world_position, ICON_SIZE / 2.0 + 8.0)
-            .next()
-            .map(|result| result.key);
-        commands.insert_resource(HoveredIcon(maybe_entity));
+            .query(world_position, ICON_SIZE / 2.0 + threshold)
+            .next();
+        commands.insert_resource(HoveredIcon(result.clone().map(|r| r.key)));
+
+        if let Ok((mut visibility, mut transform)) = hovered_circle.get_single_mut() {
+            if let Some(result) = result.as_ref() {
+                transform.translation.x = result.position.x;
+                transform.translation.y = result.position.y;
+                *visibility = Visibility::Visible;
+            } else {
+                *visibility = Visibility::Hidden;
+            }
+        }
     }
 }
 
@@ -256,14 +289,26 @@ pub fn apply_icon_velocity(
     time: Res<Time>,
     settings: Res<SettingsResource>,
     mut spatial_index: ResMut<SpatialIndexResource>,
-    mut query: Query<(Entity, &mut IconTransform, &IconVelocity)>,
+    mut query: Query<(
+        Entity,
+        &mut IconTransform,
+        &IconVelocity,
+        Has<IconPlayerController>,
+    )>,
+    mut player_circle: Query<&mut Transform, With<IconPlayerCircle>>,
 ) {
-    for (entity, mut position, velocity) in query.iter_mut() {
+    for (entity, mut position, velocity, is_player) in query.iter_mut() {
         position.position += velocity.0 * (time.delta_seconds() * settings.velocity_time_scale);
 
         // update spatial index with new position and velocity
         spatial_index
             .0
             .insert(entity, position.position, velocity.0);
+
+        if is_player {
+            let mut player_circle = player_circle.single_mut();
+            player_circle.translation.x = position.position.x;
+            player_circle.translation.y = position.position.y;
+        }
     }
 }

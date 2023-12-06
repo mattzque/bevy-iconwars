@@ -12,7 +12,7 @@ pub struct IconPlayerControllerPlugin;
 impl Plugin for IconPlayerControllerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            Update,
+            PreUpdate,
             update_key_input.run_if(in_state(GameState::GameRunning)),
         );
     }
