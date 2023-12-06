@@ -1,5 +1,6 @@
 use bevy::{
     app::{App, PluginGroup},
+    asset::AssetMetaCheck,
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     log::LogPlugin,
     window::{PresentMode, Window, WindowPlugin},
@@ -9,6 +10,7 @@ mod game;
 
 fn main() {
     App::new()
+        .insert_resource(AssetMetaCheck::Never)
         .add_plugins((
             DefaultPlugins
                 .set(LogPlugin {
@@ -18,7 +20,8 @@ fn main() {
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         title: "Icon Wars".to_string(),
-                        present_mode: PresentMode::AutoVsync,
+                        // present_mode: PresentMode::AutoVsync,
+                        present_mode: PresentMode::Immediate,
                         fit_canvas_to_parent: true,
                         resizable: true,
                         ..Default::default()

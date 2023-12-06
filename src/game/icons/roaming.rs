@@ -38,7 +38,6 @@ fn get_separation_force(
     _rotation: &f32,
     velocity: Vec2,
     spatial_index: &SpatialIndex<Entity>,
-    _query: &Query<RoamingQuery>,
     separation_distance: f32,
     max_speed: f32,
     max_force: f32,
@@ -46,15 +45,13 @@ fn get_separation_force(
     let mut steer = Vec2::ZERO;
     let mut count = 0;
 
-    for (other_entity, other_position, distance) in
-        spatial_index.query(position, separation_distance)
-    {
-        if other_entity == entity {
+    for result in spatial_index.query(position, separation_distance) {
+        if result.key == entity {
             continue;
         }
-        let mut diff = position - other_position;
+        let mut diff = position - *result.position;
         diff = diff.normalize();
-        diff /= distance;
+        diff /= result.distance;
         steer += diff;
         count += 1;
     }
@@ -80,19 +77,17 @@ fn get_alignment_force(
     _rotation: &f32,
     velocity: Vec2,
     spatial_index: &SpatialIndex<Entity>,
-    query: &Query<RoamingQuery>,
     alignment_distance: f32,
     max_speed: f32,
     max_force: f32,
 ) -> Vec2 {
     let mut average_velocity = Vec2::ZERO;
     let mut count = 0;
-    for (other_entity, _, _) in spatial_index.query(position, alignment_distance) {
-        if other_entity == entity {
+    for result in spatial_index.query(position, alignment_distance) {
+        if result.key == entity {
             continue;
         }
-        let (_, _, IconVelocity(other_velocity)) = query.get(other_entity).unwrap();
-        average_velocity += *other_velocity;
+        average_velocity += *result.velocity;
         count += 1;
     }
     if count > 0 {
@@ -135,23 +130,14 @@ fn get_cohesion_force(
     _rotation: &f32,
     velocity: Vec2,
     spatial_index: &SpatialIndex<Entity>,
-    query: &Query<RoamingQuery>,
     cohesion_distance: f32,
     max_speed: f32,
     max_force: f32,
 ) -> Vec2 {
     let mut average_position = Vec2::ZERO;
     let mut count = 0;
-    for (other_entity, _, _) in spatial_index.query(position, cohesion_distance) {
-        let (
-            _,
-            IconTransform {
-                position: other_position,
-                ..
-            },
-            _,
-        ) = query.get(other_entity).unwrap();
-        average_position += *other_position;
+    for result in spatial_index.query(position, cohesion_distance) {
+        average_position += *result.position;
         count += 1;
     }
     if count > 0 {
@@ -175,7 +161,6 @@ fn get_icon_velocity(
     rotation: &f32,
     velocity: &Vec2,
     spatial_index: &SpatialIndex<Entity>,
-    query: &Query<RoamingQuery>,
     settings: &SettingsResource,
     boundaries: &WorldBoundaryResource,
 ) -> Vec2 {
@@ -185,7 +170,6 @@ fn get_icon_velocity(
         rotation,
         *velocity,
         spatial_index,
-        query,
         settings.collision_distance,
         settings.max_speed,
         settings.max_force,
@@ -196,7 +180,6 @@ fn get_icon_velocity(
         rotation,
         *velocity,
         spatial_index,
-        query,
         settings.collision_distance,
         settings.max_speed,
         settings.max_force,
@@ -207,7 +190,6 @@ fn get_icon_velocity(
         rotation,
         *velocity,
         spatial_index,
-        query,
         settings.alignment_distance,
         settings.max_speed,
         settings.max_force,
@@ -218,7 +200,6 @@ fn get_icon_velocity(
         rotation,
         *velocity,
         spatial_index,
-        query,
         settings.cohesion_distance,
         settings.max_speed,
         settings.max_force,
@@ -290,7 +271,6 @@ fn update_icon_roaming_velocity(
                     rotation,
                     &velocity.0,
                     &spatial_index.0,
-                    &query,
                     &settings,
                     &boundaries,
                 ),

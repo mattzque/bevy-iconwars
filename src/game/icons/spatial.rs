@@ -5,14 +5,20 @@ use std::hash::Hash;
 
 type GridKey = (i16, i16);
 
+pub struct SpatialQueryResult<'a, T> {
+    pub key: T,
+    pub position: &'a Vec2,
+    pub velocity: &'a Vec2,
+    pub distance: f32,
+}
+
 pub struct SpatialIndex<T> {
     pub min: Vec2,
     pub max: Vec2,
     pub cell_size: f32,
     pub entities: HashMap<GridKey, HashSet<T>>,
-    pub by_entity: HashMap<T, (GridKey, Vec2)>,
+    pub by_entity: HashMap<T, (GridKey, Vec2, Vec2)>,
 }
-
 impl<T> SpatialIndex<T>
 where
     T: Hash + Eq + Clone + Debug,
@@ -34,9 +40,9 @@ where
         (x, y)
     }
 
-    pub fn insert(&mut self, entity: T, position: Vec2) {
+    pub fn insert(&mut self, entity: T, position: Vec2, velocity: Vec2) {
         let key = self.key(position);
-        if let Some((old_key, old_position)) = self.by_entity.get(&entity) {
+        if let Some((old_key, old_position, _)) = self.by_entity.get(&entity) {
             if old_key == &key && *old_position == position {
                 return;
             }
@@ -44,14 +50,15 @@ where
         }
 
         self.entities.entry(key).or_default().insert(entity.clone());
-        self.by_entity.insert(entity, (key, position));
+        self.by_entity.insert(entity, (key, position, velocity));
     }
 
+    /// Returns (T, position, velocity, distance)
     pub fn query(
         &self,
         position: Vec2,
         distance: f32,
-    ) -> impl Iterator<Item = (T, Vec2, f32)> + '_ {
+    ) -> impl Iterator<Item = SpatialQueryResult<'_, T>> + '_ {
         let grid_distance = (distance / self.cell_size).ceil() as i16;
         let key = self.key(position);
         let mut results = Vec::new();
@@ -64,10 +71,15 @@ where
         }
 
         results.into_iter().flat_map(move |entity| {
-            let (_, other) = self.by_entity.get(entity).unwrap();
-            let distance_to_other = (position - *other).length();
-            if distance_to_other <= distance {
-                Some((entity.clone(), *other, distance_to_other))
+            let (_, other_position, other_velocity) = self.by_entity.get(entity).unwrap();
+            let distance_to_other = (position - *other_position).length();
+            if distance_to_other > 0.0 && distance_to_other <= distance {
+                Some(SpatialQueryResult {
+                    key: entity.clone(),
+                    position: other_position,
+                    velocity: other_velocity,
+                    distance: distance_to_other,
+                })
             } else {
                 None
             }
@@ -99,25 +111,25 @@ mod tests {
     #[test]
     fn test_spatial() {
         let mut index = SpatialIndex::new(Vec2::new(-100.0, 100.0), Vec2::new(-100.0, 100.0), 10.0);
-        index.insert(1, Vec2::new(0.0, 0.0));
-        index.insert(2, Vec2::new(-20.0, -20.0));
-        index.insert(3, Vec2::new(20.0, 20.0));
+        index.insert(1, Vec2::new(0.0, 0.0), Vec2::splat(0.0));
+        index.insert(2, Vec2::new(-20.0, -20.0), Vec2::splat(0.0));
+        index.insert(3, Vec2::new(20.0, 20.0), Vec2::splat(0.0));
         assert_eq!(
             index
                 .query(Vec2::new(0.5, 0.5), 10.0)
-                .map(|(e, _, _)| e)
+                .map(|r| r.key)
                 .collect::<Vec<_>>(),
             &[1]
         );
         let mut results = index
             .query(Vec2::new(0.5, 0.5), 50.0)
-            .map(|(e, _, _)| e)
+            .map(|r| r.key)
             .collect::<Vec<_>>();
         results.sort();
         assert_eq!(results, &[1, 2, 3]);
         let mut results = index
             .query(Vec2::new(20.0, 20.0), 30.0)
-            .map(|(e, _, _)| e)
+            .map(|r| r.key)
             .collect::<Vec<_>>();
         results.sort();
         assert_eq!(results, &[1, 3]);

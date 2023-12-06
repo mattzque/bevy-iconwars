@@ -86,3 +86,7 @@ pub struct IconTransform {
 
 #[derive(Component, Clone, Debug)]
 pub struct IconVelocity(pub Vec2);
+
+/// Mark entity that is controlled by the player
+#[derive(Component, Clone, Debug)]
+pub struct IconPlayerController;

@@ -7,8 +7,7 @@ use bevy::window::PrimaryWindow;
 use rand::prelude::*;
 
 use crate::game::icons::components::{
-    IconEntity, IconInstanceData, IconRenderEntity, IconSheetRef, IconTransform, IconVelocity,
-    SheetIndex,
+    IconEntity, IconInstanceData, IconRenderEntity, IconSheetRef, IconVelocity, SheetIndex,
 };
 use crate::game::icons::resources::{HoveredIcon, SpatialIndexResource, WorldBoundaryResource};
 
@@ -25,11 +24,12 @@ mod resources;
 mod roaming;
 mod spatial;
 
+pub use components::{IconPlayerController, IconTransform};
 pub use resources::IconSheetResource;
 
 pub const ICON_SIZE: f32 = 32.0;
 pub const ICON_MIN_DISTANCE: f32 = 45.25 + 15.0;
-pub const SPATIAL_GRID_SIZE: f32 = 64.0; // TODO: huge performance impact, tune this later!
+pub const SPATIAL_GRID_SIZE: f32 = 128.0; // TODO: huge performance impact, tune this later!
 
 pub struct IconPlugin;
 
@@ -69,8 +69,12 @@ fn init_icons_system(
     let IconSheetAsset(sheets) = assets.get(&resource.handle).unwrap();
     let mut rng = rand::thread_rng();
     let mut instances = Vec::new();
+    let mut positions = Vec::new();
     let mut textures = Vec::new();
     let mut count = 0;
+
+    let mut spatial_index = spatial::SpatialIndex::new(*bounds_min, *bounds_max, SPATIAL_GRID_SIZE);
+
     let start = Instant::now();
     sheets.iter().enumerate().for_each(|(sheet_index, sheet)| {
         textures.push(sheet.handle.clone());
@@ -88,7 +92,7 @@ fn init_icons_system(
 
                     // search for collisions:
                     let mut collision = false;
-                    for (other_position, _, _, _) in &instances {
+                    for other_position in &positions {
                         let d: Vec2 = position - *other_position;
                         if d.length() < ICON_MIN_DISTANCE {
                             collision = true;
@@ -102,16 +106,27 @@ fn init_icons_system(
 
                     let rotation = (rng.gen_range(0.0..360.0) as f32).to_radians();
                     let velocity = Vec2::new(rotation.cos() * 1.0, rotation.sin() * 1.0);
-                    let components = (
-                        IconEntity,
-                        IconSheetRef {
-                            sheet_index,
-                            icon_index,
-                            icon_name: icon.name.clone(),
-                        },
-                        IconTransform { position, rotation },
-                        IconVelocity(velocity),
-                    );
+
+                    let entity = commands
+                        .spawn((
+                            IconEntity,
+                            IconSheetRef {
+                                sheet_index,
+                                icon_index,
+                                icon_name: icon.name.clone(),
+                            },
+                            IconTransform { position, rotation },
+                            IconVelocity(velocity),
+                        ))
+                        .id();
+
+                    // perhaps use the bevy icon instead?
+                    if icon.name == "rust" {
+                        commands.entity(entity).insert(IconPlayerController);
+                    }
+
+                    spatial_index.insert(entity, position, velocity);
+
                     let sheet_index = SheetIndex {
                         sheet_index: sheet_index as u32,
                         tile_uv: Vec2::new(
@@ -119,27 +134,20 @@ fn init_icons_system(
                             icon.y as f32, // / sheet.height as f32,
                         ),
                     };
-                    instances.push((position, rotation, components, sheet_index));
+
+                    positions.push(position);
+
+                    instances.push((
+                        entity,
+                        (Vec3::new(position.x, position.y, rotation), sheet_index),
+                    ));
+
                     count += 1;
                     break;
                 }
             });
     });
     info!("Fitted {} icons in {:?}", count, start.elapsed());
-
-    let mut spatial_index = spatial::SpatialIndex::new(*bounds_min, *bounds_max, SPATIAL_GRID_SIZE);
-
-    let instances_with_entities = instances
-        .into_iter()
-        .map(|(position, rotation, components, sheet_index)| {
-            let entity = commands.spawn(components).id();
-            spatial_index.insert(entity, position);
-            (
-                entity,
-                (Vec3::new(position.x, position.y, rotation), sheet_index),
-            )
-        })
-        .collect::<Vec<(Entity, (Vec3, SheetIndex))>>();
 
     info!("Spawned {} icons", count);
 
@@ -155,10 +163,7 @@ fn init_icons_system(
             transform: Transform::from_translation(Vec3::ZERO),
             ..Default::default()
         },
-        IconInstanceData::new(
-            resource.texture_array.clone().unwrap(),
-            instances_with_entities,
-        ),
+        IconInstanceData::new(resource.texture_array.clone().unwrap(), instances),
         NoFrustumCulling,
     ));
     commands.insert_resource(SpatialIndexResource(spatial_index));
@@ -206,7 +211,7 @@ fn update_hovered_icon_system(
             .0
             .query(world_position, ICON_SIZE / 2.0 + 8.0)
             .next()
-            .map(|(entity, _, _)| entity);
+            .map(|result| result.key);
         commands.insert_resource(HoveredIcon(maybe_entity));
     }
 }
@@ -229,8 +234,13 @@ pub fn apply_icon_velocity(
 ) {
     for (entity, mut position, velocity) in query.iter_mut() {
         position.position += velocity.0 * (time.delta_seconds() * settings.velocity_time_scale);
+
         // rotation/angle in radians from velocity vector...
         position.rotation = velocity.0.y.atan2(velocity.0.x);
-        spatial_index.0.insert(entity, position.position);
+
+        // update spatial index with new position and velocity
+        spatial_index
+            .0
+            .insert(entity, position.position, velocity.0);
     }
 }

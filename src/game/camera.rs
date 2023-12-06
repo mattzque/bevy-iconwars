@@ -1,6 +1,7 @@
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 
+use super::icons::{IconPlayerController, IconTransform};
 use super::states::GameState;
 
 pub struct CameraPlugin;
@@ -11,7 +12,8 @@ impl Plugin for CameraPlugin {
         app.add_systems(OnEnter(GameState::GameRunning), make_camera_visible);
         app.add_systems(
             Update,
-            (camera_zoom_system).run_if(in_state(GameState::GameRunning)),
+            (camera_zoom_system, camera_follow_player_icon_system)
+                .run_if(in_state(GameState::GameRunning)),
         );
     }
 }
@@ -55,5 +57,16 @@ fn camera_zoom_system(
 
             projection.scale *= (1.0 + event.y / SCALE_FACTOR) * -1.0;
         }
+    }
+}
+
+fn camera_follow_player_icon_system(
+    player_icon: Query<&IconTransform, With<IconPlayerController>>,
+    mut query: Query<&mut Transform, With<Camera>>,
+) {
+    if let Ok(IconTransform { position, .. }) = player_icon.get_single() {
+        let mut camera = query.single_mut();
+        camera.translation.x = position.x;
+        camera.translation.y = position.y;
     }
 }

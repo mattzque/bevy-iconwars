@@ -11,7 +11,7 @@ pub struct UpdateTimer(pub Timer);
 
 impl Default for UpdateTimer {
     fn default() -> Self {
-        Self(Timer::new(Duration::from_millis(30), TimerMode::Repeating))
+        Self(Timer::new(Duration::from_millis(100), TimerMode::Repeating))
     }
 }
 
