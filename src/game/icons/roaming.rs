@@ -159,6 +159,33 @@ type RoamingQuery = (
     &'static mut IconVelocity,
 );
 
+use bevy::math::Vec2;
+
+fn get_nearest_point_in_perimeter(point: Vec2, boundary_min: Vec2, boundary_max: Vec2) -> Vec2 {
+    // Clamp the point within the boundary
+    let clamped_point = point.clamp(boundary_min, boundary_max);
+
+    // Calculate distances to the boundaries
+    let dl = (clamped_point.x - boundary_min.x).abs();
+    let dr = (clamped_point.x - boundary_max.x).abs();
+    let dt = (clamped_point.y - boundary_min.y).abs();
+    let db = (clamped_point.y - boundary_max.y).abs();
+
+    // Find the minimum distance to determine the nearest edge
+    let m = dl.min(dr.min(dt.min(db)));
+
+    // Return the nearest point on the perimeter based on the nearest edge
+    if m == dt {
+        Vec2::new(clamped_point.x, boundary_min.y)
+    } else if m == db {
+        Vec2::new(clamped_point.x, boundary_max.y)
+    } else if m == dl {
+        Vec2::new(boundary_min.x, clamped_point.y)
+    } else {
+        Vec2::new(boundary_max.x, clamped_point.y)
+    }
+}
+
 // Function to calculate the avoidance force
 fn calculate_avoidance_force(
     position: Vec2,
@@ -166,57 +193,18 @@ fn calculate_avoidance_force(
     boundary_max: Vec2,
     max_force: f32,
     some_threshold_distance: f32,
-) -> Vec2 {
-    let mut force = Vec2::new(0.0, 0.0);
-
+) -> Option<Vec2> {
     // find the closest point to the boundary
-    let closest_x = position.x.clamp(boundary_min.x, boundary_max.x);
-    let closest_y = position.y.clamp(boundary_min.y, boundary_max.y);
-    let distance = (Vec2::new(closest_x, closest_y) - position).length();
+    let closest = get_nearest_point_in_perimeter(position, boundary_min, boundary_max);
+    let distance = (closest - position).length();
 
     if distance < some_threshold_distance {
-        // calculate the force
-        let mut force_x = 0.0;
-        let mut force_y = 0.0;
-
-        if closest_x == boundary_min.x {
-            force_x = max_force * (1.0 - (position.x - boundary_min.x) / some_threshold_distance);
-        } else if closest_x == boundary_max.x {
-            force_x = max_force * (1.0 - (boundary_max.x - position.x) / some_threshold_distance);
-        }
-
-        if closest_y == boundary_min.y {
-            force_y = max_force * (1.0 - (position.y - boundary_min.y) / some_threshold_distance);
-        } else if closest_y == boundary_max.y {
-            force_y = max_force * (1.0 - (boundary_max.y - position.y) / some_threshold_distance);
-        }
-
-        force = Vec2::new(force_x, force_y);
+        // get the vector from position to closest:
+        let d = closest - position;
+        Some(d.normalize() * max_force * -1.0)
+    } else {
+        None
     }
-
-    // // For the X-axis
-    // let distance_to_min_x = (position.x - boundary_min.x).abs();
-    // let distance_to_max_x = (boundary_max.x - position.x).abs();
-    // let min_distance_x = distance_to_min_x.min(distance_to_max_x);
-    // force.x = max_force * (1.0 - min_distance_x / some_threshold_distance).clamp(0.0, 1.0);
-    // force.x *= if distance_to_min_x < distance_to_max_x {
-    //     -1.0
-    // } else {
-    //     1.0
-    // };
-
-    // // For the Y-axis
-    // let distance_to_min_y = (position.y - boundary_min.y).abs();
-    // let distance_to_max_y = (boundary_max.y - position.y).abs();
-    // let min_distance_y = distance_to_min_y.min(distance_to_max_y);
-    // force.y = max_force * (1.0 - min_distance_y / some_threshold_distance).clamp(0.0, 1.0);
-    // force.y *= if distance_to_min_y < distance_to_max_y {
-    //     -1.0
-    // } else {
-    //     1.0
-    // };
-
-    force
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -304,15 +292,15 @@ fn get_icon_velocity(
     }
 
     // Inside the main logic
-    let force = calculate_avoidance_force(
+    if let Some(force) = calculate_avoidance_force(
         *position,
         boundaries.dropzone_min,
         boundaries.dropzone_max,
         settings.avoidance_force_dropzone,
         settings.avoidance_distance_dropzone,
-    );
-    acceleration.x += force.x;
-    acceleration.y += force.y;
+    ) {
+        acceleration = force;
+    }
 
     // // Check against the inner drop zone boundaries
     // if position.x > boundaries.dropzone_min.x && position.x < boundaries.dropzone_max.x {

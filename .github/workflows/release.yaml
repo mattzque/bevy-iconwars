@@ -131,7 +131,7 @@ jobs:
           targets: x86_64-pc-windows-msvc
   
       - name: Remove development rust configs
-        run: rm -Rf rust-toolchain .cargo
+        run: Remove-Item -Recurse -Force -LiteralPath "rust-toolchain" -LiteralPath ".cargo"
 
       - name: Build
         run: |
