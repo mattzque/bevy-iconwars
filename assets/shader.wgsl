@@ -52,4 +52,5 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
    let color = textureSample(icon_sheets, icon_sheets_sampler, in.uv, in.layer);
    return vec4<f32>(1.0 - color.xyz, color.w);
+//    return color;
 }

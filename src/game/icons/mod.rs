@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::render::batching::NoAutomaticBatching;
 use bevy::render::mesh::shape;
 use bevy::render::view::NoFrustumCulling;
 use bevy::sprite::Mesh2dHandle;
@@ -9,7 +10,7 @@ use rand::prelude::*;
 use crate::game::icons::components::{
     IconEntity, IconInstanceData, IconRenderEntity, IconSheetRef, IconVelocity, SheetIndex,
 };
-use crate::game::icons::resources::{HoveredIcon, SpatialIndexResource, WorldBoundaryResource};
+use crate::game::icons::resources::{HoveredIcon, SpatialIndexResource};
 
 use self::resources::UpdateTimer;
 
@@ -17,6 +18,7 @@ use super::assets::icons::IconSheetAsset;
 use super::camera::CameraTag;
 use super::settings::SettingsResource;
 use super::states::GameState;
+use super::world::WorldBoundaryResource;
 
 mod components;
 mod controller;
@@ -38,7 +40,6 @@ impl Plugin for IconPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(HoveredIcon::default());
         app.insert_resource(UpdateTimer::default());
-        app.insert_resource(WorldBoundaryResource::default());
         app.add_plugins((
             renderer::IconRendererPlugin,
             roaming::IconRoamingPlugin,
@@ -70,6 +71,7 @@ fn init_icons_system(
     let WorldBoundaryResource {
         bounds_min,
         bounds_max,
+        ..
     } = boundaries.as_ref();
     let IconSheetAsset(sheets) = assets.get(&resource.handle).unwrap();
     let mut rng = rand::thread_rng();
@@ -94,6 +96,9 @@ fn init_icons_system(
                         rng.gen_range(bounds_min.x..bounds_max.x),
                         rng.gen_range(bounds_min.y..bounds_max.y),
                     );
+                    if boundaries.in_dropzone(position) {
+                        continue;
+                    }
 
                     // search for collisions:
                     let mut collision = false;
@@ -180,6 +185,7 @@ fn init_icons_system(
         },
         IconInstanceData::new(resource.texture_array.clone().unwrap(), instances),
         NoFrustumCulling,
+        NoAutomaticBatching,
     ));
     commands.insert_resource(SpatialIndexResource(spatial_index));
 
@@ -191,7 +197,7 @@ fn debug_icons_system(
     hovered: Res<HoveredIcon>,
     mut gizmos: Gizmos,
 ) {
-    for (entity, IconTransform { position, rotation }) in query.iter() {
+    for (entity, IconTransform { position, .. }) in query.iter() {
         // gizmos.rect_2d(
         //     *position,
         //     *rotation,
@@ -254,9 +260,6 @@ pub fn apply_icon_velocity(
 ) {
     for (entity, mut position, velocity) in query.iter_mut() {
         position.position += velocity.0 * (time.delta_seconds() * settings.velocity_time_scale);
-
-        // rotation/angle in radians from velocity vector...
-        position.rotation = velocity.0.y.atan2(velocity.0.x);
 
         // update spatial index with new position and velocity
         spatial_index

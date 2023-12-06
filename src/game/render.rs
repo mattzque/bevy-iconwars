@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 pub struct RenderPlugin;
 
-const CLEAR_COLOR: &str = "#FFFFFF";
+const CLEAR_COLOR: &str = "#000000";
 
 impl Plugin for RenderPlugin {
     fn build(&self, app: &mut App) {

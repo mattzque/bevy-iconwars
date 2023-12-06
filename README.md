@@ -34,6 +34,8 @@ License: [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) + MIT
 * [`bevy`](https://crates.io/crates/bevy) (MIT OR Apache-2.0)
 * [`egui`](https://crates.io/crates/egui) (MIT OR Apache-2.0)
 * [`bevy_egui`](https://crates.io/crates/bevy_egui) (MIT)
+* [`lyon`](https://github.com/nical/lyon) (MIT OR Apache-2.0)
+* [`bevy_prototype_lyon`](https://crates.io/crates/bevy_prototype_lyon) (MIT OR Apache-2.0)
 * [`anyhow`](https://crates.io/crates/anyhow) (MIT OR Apache-2.0)
 * [`thiserror`](https://crates.io/crates/thiserror) (MIT OR Apache-2.0)
 * [`serde`](https://crates.io/crates/serde) (MIT OR Apache-2.0)

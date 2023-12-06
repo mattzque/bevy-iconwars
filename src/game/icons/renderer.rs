@@ -88,6 +88,7 @@ pub fn queue_custom(
         &mut RenderPhase<Transparent2d>,
         &ExtractedView,
     )>,
+    query: Query<&GpuIconInstanceData>,
 ) {
     if render_mesh_instances.is_empty() {
         return;
@@ -104,6 +105,10 @@ pub fn queue_custom(
 
         // Queue all entities visible to that view
         for visible_entity in &visible_entities.entities {
+            if query.get(*visible_entity).is_err() {
+                continue;
+            }
+
             if let Some(mesh_instance) = render_mesh_instances.get(visible_entity) {
                 let mesh2d_handle = mesh_instance.mesh_asset_id;
                 let mesh2d_transforms = &mesh_instance.transforms;

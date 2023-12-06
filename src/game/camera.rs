@@ -24,16 +24,16 @@ pub struct CameraTag;
 fn setup_cameras(mut commands: Commands) {
     commands.spawn((
         Camera2dBundle {
-            projection: OrthographicProjection {
-                // scale: 2.7,
-                scale: 0.8,
-                ..Default::default()
-            },
-            camera: Camera {
-                order: 1,
-                is_active: true,
-                ..Default::default()
-            },
+            // projection: OrthographicProjection {
+            //     // scale: 2.7,
+            //     // scale: 0.8,
+            //     ..Default::default()
+            // },
+            // camera: Camera {
+            //     // order: 1,
+            //     // is_active: true,
+            //     ..Default::default()
+            // },
             ..Default::default()
         },
         CameraTag,

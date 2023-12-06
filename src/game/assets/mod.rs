@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use bevy::asset::RecursiveDependencyLoadState;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
+use bevy::render::texture::{ImageFilterMode, ImageSampler, ImageSamplerDescriptor};
 
 use self::icons::IconSheetAsset;
 
@@ -102,7 +103,7 @@ fn assets_loaded_system(
     });
 
     // create array texture:
-    let texture_array = Image::new(
+    let mut texture_array = Image::new(
         Extent3d {
             width: width as u32,
             height: height as u32,
@@ -110,10 +111,18 @@ fn assets_loaded_system(
         },
         TextureDimension::D2,
         data,
-        // TextureFormat::Rgba8UnormSrgb,
-        TextureFormat::Rgba8Unorm,
+        TextureFormat::Rgba8UnormSrgb,
+        // TextureFormat::Rgba8Unorm,
         // TextureFormat::// Rgba8UnormSrgb,
     );
+    texture_array.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
+        mag_filter: ImageFilterMode::Nearest,
+        min_filter: ImageFilterMode::Nearest,
+        mipmap_filter: ImageFilterMode::Nearest,
+        // lod_min_clamp: (),
+        // lod_max_clamp: (),
+        ..Default::default()
+    });
     let texture_array_handle = images.add(texture_array);
     resource.texture_array = Some(texture_array_handle);
 

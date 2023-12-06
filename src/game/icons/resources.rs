@@ -26,18 +26,3 @@ pub struct SpatialIndexResource(pub SpatialIndex<Entity>);
 
 #[derive(Resource, Default)]
 pub struct HoveredIcon(pub Option<Entity>);
-
-#[derive(Resource)]
-pub struct WorldBoundaryResource {
-    pub bounds_min: Vec2,
-    pub bounds_max: Vec2,
-}
-
-impl Default for WorldBoundaryResource {
-    fn default() -> Self {
-        Self {
-            bounds_min: Vec2::new(-5000.0, -5000.0),
-            bounds_max: Vec2::new(5000.0, 5000.0),
-        }
-    }
-}

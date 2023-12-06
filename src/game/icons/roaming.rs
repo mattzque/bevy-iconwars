@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 use bevy::utils::Instant;
 
-use crate::game::{settings::SettingsResource, states::GameState};
+use crate::game::{settings::SettingsResource, states::GameState, world::WorldBoundaryResource};
 
 use super::{
     components::{IconTransform, IconVelocity},
-    resources::{SpatialIndexResource, UpdateTimer, WorldBoundaryResource},
+    resources::{SpatialIndexResource, UpdateTimer},
     spatial::SpatialIndex,
     IconPlayerController,
 };
@@ -153,7 +153,71 @@ fn get_cohesion_force(
     }
 }
 
-type RoamingQuery = (Entity, &'static IconTransform, &'static mut IconVelocity);
+type RoamingQuery = (
+    Entity,
+    &'static mut IconTransform,
+    &'static mut IconVelocity,
+);
+
+// Function to calculate the avoidance force
+fn calculate_avoidance_force(
+    position: Vec2,
+    boundary_min: Vec2,
+    boundary_max: Vec2,
+    max_force: f32,
+    some_threshold_distance: f32,
+) -> Vec2 {
+    let mut force = Vec2::new(0.0, 0.0);
+
+    // find the closest point to the boundary
+    let closest_x = position.x.clamp(boundary_min.x, boundary_max.x);
+    let closest_y = position.y.clamp(boundary_min.y, boundary_max.y);
+    let distance = (Vec2::new(closest_x, closest_y) - position).length();
+
+    if distance < some_threshold_distance {
+        // calculate the force
+        let mut force_x = 0.0;
+        let mut force_y = 0.0;
+
+        if closest_x == boundary_min.x {
+            force_x = max_force * (1.0 - (position.x - boundary_min.x) / some_threshold_distance);
+        } else if closest_x == boundary_max.x {
+            force_x = max_force * (1.0 - (boundary_max.x - position.x) / some_threshold_distance);
+        }
+
+        if closest_y == boundary_min.y {
+            force_y = max_force * (1.0 - (position.y - boundary_min.y) / some_threshold_distance);
+        } else if closest_y == boundary_max.y {
+            force_y = max_force * (1.0 - (boundary_max.y - position.y) / some_threshold_distance);
+        }
+
+        force = Vec2::new(force_x, force_y);
+    }
+
+    // // For the X-axis
+    // let distance_to_min_x = (position.x - boundary_min.x).abs();
+    // let distance_to_max_x = (boundary_max.x - position.x).abs();
+    // let min_distance_x = distance_to_min_x.min(distance_to_max_x);
+    // force.x = max_force * (1.0 - min_distance_x / some_threshold_distance).clamp(0.0, 1.0);
+    // force.x *= if distance_to_min_x < distance_to_max_x {
+    //     -1.0
+    // } else {
+    //     1.0
+    // };
+
+    // // For the Y-axis
+    // let distance_to_min_y = (position.y - boundary_min.y).abs();
+    // let distance_to_max_y = (boundary_max.y - position.y).abs();
+    // let min_distance_y = distance_to_min_y.min(distance_to_max_y);
+    // force.y = max_force * (1.0 - min_distance_y / some_threshold_distance).clamp(0.0, 1.0);
+    // force.y *= if distance_to_min_y < distance_to_max_y {
+    //     -1.0
+    // } else {
+    //     1.0
+    // };
+
+    force
+}
 
 #[allow(clippy::too_many_arguments)]
 fn get_icon_velocity(
@@ -239,6 +303,33 @@ fn get_icon_velocity(
         acceleration.y = -settings.max_force;
     }
 
+    // Inside the main logic
+    let force = calculate_avoidance_force(
+        *position,
+        boundaries.dropzone_min,
+        boundaries.dropzone_max,
+        settings.avoidance_force_dropzone,
+        settings.avoidance_distance_dropzone,
+    );
+    acceleration.x += force.x;
+    acceleration.y += force.y;
+
+    // // Check against the inner drop zone boundaries
+    // if position.x > boundaries.dropzone_min.x && position.x < boundaries.dropzone_max.x {
+    //     if position.x - boundaries.dropzone_min.x < boundaries.dropzone_max.x - position.x {
+    //         acceleration.x = -settings.max_force; // Push left
+    //     } else {
+    //         acceleration.x = settings.max_force; // Push right
+    //     }
+    // }
+    // if position.y > boundaries.dropzone_min.y && position.y < boundaries.dropzone_max.y {
+    //     if position.y - boundaries.dropzone_min.y < boundaries.dropzone_max.y - position.y {
+    //         acceleration.y = -settings.max_force; // Push up
+    //     } else {
+    //         acceleration.y = settings.max_force; // Push down
+    //     }
+    // }
+
     acceleration = limit_vec2(acceleration, settings.max_force);
 
     // println!("velocity={:?} acceleration={:?}", velocity, acceleration);
@@ -280,8 +371,11 @@ fn update_icon_roaming_velocity(
         .collect::<Vec<(Entity, Vec2)>>();
 
     for (entity, velocity) in velocities.into_iter() {
-        if let Ok((_, _, mut icon_velocity)) = query.get_mut(entity) {
+        if let Ok((_, mut icon_transform, mut icon_velocity)) = query.get_mut(entity) {
             icon_velocity.0 = velocity;
+
+            // rotation/angle in radians from velocity vector...
+            icon_transform.rotation = velocity.y.atan2(velocity.x);
         }
     }
 

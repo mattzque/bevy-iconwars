@@ -7,6 +7,7 @@ mod icons;
 mod render;
 mod settings;
 mod states;
+mod world;
 
 pub struct GamePlugin;
 
@@ -16,6 +17,7 @@ impl Plugin for GamePlugin {
         app.add_state::<states::GameState>();
         app.add_plugins((
             assets::GameAssetPlugin,
+            world::WorldPlugin,
             icons::IconPlugin,
             render::RenderPlugin,
             camera::CameraPlugin,

@@ -4,6 +4,11 @@ use bevy::{ecs::system::Resource, reflect::Reflect};
 pub struct SettingsResource {
     pub max_speed: f32,
     pub max_force: f32,
+
+    pub avoidance_distance_dropzone: f32,
+    pub avoidance_force_dropzone: f32,
+    pub avoidance_force_bounds: f32,
+
     pub velocity_time_scale: f32,
     pub collision_distance: f32,
     pub separation_distance: f32,
@@ -14,6 +19,10 @@ pub struct SettingsResource {
     pub alignment_weight: f32,
     pub cohesion_weight: f32,
     pub seek_weight: f32,
+    pub controller_turn_speed: f32,
+    pub controller_acceleration: f32,
+    pub controller_dampening: f32,
+    pub controller_max_speed: f32,
 }
 
 impl Default for SettingsResource {
@@ -21,6 +30,10 @@ impl Default for SettingsResource {
         Self {
             max_speed: 0.290,
             max_force: 0.05,
+
+            avoidance_distance_dropzone: 64.0,
+            avoidance_force_dropzone: 2.0,
+            avoidance_force_bounds: 0.1,
 
             velocity_time_scale: 300.0,
 
@@ -35,6 +48,11 @@ impl Default for SettingsResource {
             cohesion_weight: 0.3,
 
             seek_weight: 0.1,
+
+            controller_turn_speed: 10.0,
+            controller_acceleration: 1.0,
+            controller_dampening: 1.0,
+            controller_max_speed: 1.0,
         }
     }
 }
