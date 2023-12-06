@@ -24,6 +24,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+      - name: Remove development rust configs
+        run: rm -Rf rust-toolchain .cargo
       - name: install wasm-bindgen-cli
         run: |
           cargo install wasm-bindgen-cli
@@ -78,6 +80,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-unknown-linux-gnu
+      - name: Remove development rust configs
+        run: rm -Rf rust-toolchain .cargo
       - name: install dependencies
         run: |
           sudo apt-get update; sudo apt-get install pkg-config libx11-dev libasound2-dev libudev-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
@@ -126,6 +130,9 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
   
+      - name: Remove development rust configs
+        run: rm -Rf rust-toolchain .cargo
+
       - name: Build
         run: |
           cargo build --release --no-default-features --target x86_64-pc-windows-msvc
@@ -168,6 +175,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-apple-darwin
+      - name: Remove development rust configs
+        run: rm -Rf rust-toolchain .cargo
       - name: Environment Setup
         run: |
           export CFLAGS="-fno-stack-check"
@@ -212,6 +221,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin
+      - name: Remove development rust configs
+        run: rm -Rf rust-toolchain .cargo
       - name: Environment 
         # macOS 11 was the first version to support ARM
         run: |

@@ -30,6 +30,8 @@ jobs:
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.toml') }}
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
+      - name: Remove development rust configs
+        run: rm -Rf rust-toolchain .cargo
       - name: Install Dependencies
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
       - name: Run cargo test
@@ -57,6 +59,8 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+      - name: Remove development rust configs
+        run: rm -Rf rust-toolchain .cargo
       - name: Install Dependencies
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
       - name: Run clippy
@@ -74,5 +78,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
+      - name: Remove development rust configs
+        run: rm -Rf rust-toolchain .cargo
       - name: Run cargo fmt
         run: cargo fmt --all -- --check

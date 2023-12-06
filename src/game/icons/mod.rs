@@ -19,6 +19,7 @@ use super::settings::SettingsResource;
 use super::states::GameState;
 
 mod components;
+mod controller;
 mod renderer;
 mod resources;
 mod roaming;
@@ -38,7 +39,11 @@ impl Plugin for IconPlugin {
         app.insert_resource(HoveredIcon::default());
         app.insert_resource(UpdateTimer::default());
         app.insert_resource(WorldBoundaryResource::default());
-        app.add_plugins((renderer::IconRendererPlugin, roaming::IconRoamingPlugin));
+        app.add_plugins((
+            renderer::IconRendererPlugin,
+            roaming::IconRoamingPlugin,
+            controller::IconPlayerControllerPlugin,
+        ));
         app.add_systems(OnEnter(GameState::GameLoading), init_icons_system);
         app.add_systems(
             Update,
@@ -104,8 +109,18 @@ fn init_icons_system(
                         continue;
                     }
 
+                    let is_player = icon.name == "rust";
+
                     let rotation = (rng.gen_range(0.0..360.0) as f32).to_radians();
-                    let velocity = Vec2::new(rotation.cos() * 1.0, rotation.sin() * 1.0);
+                    let initial_speed = 1.0;
+                    let velocity = if is_player {
+                        Vec2::ZERO
+                    } else {
+                        Vec2::new(
+                            rotation.cos() * initial_speed,
+                            rotation.sin() * initial_speed,
+                        )
+                    };
 
                     let entity = commands
                         .spawn((
@@ -121,7 +136,7 @@ fn init_icons_system(
                         .id();
 
                     // perhaps use the bevy icon instead?
-                    if icon.name == "rust" {
+                    if is_player {
                         commands.entity(entity).insert(IconPlayerController);
                     }
 
@@ -177,20 +192,25 @@ fn debug_icons_system(
     mut gizmos: Gizmos,
 ) {
     for (entity, IconTransform { position, rotation }) in query.iter() {
-        gizmos.rect_2d(
+        // gizmos.rect_2d(
+        //     *position,
+        //     *rotation,
+        //     Vec2::splat(ICON_SIZE),
+        //     if hovered.0 == Some(entity) {
+        //         Color::RED
+        //     } else {
+        //         Color::BLACK
+        //     },
+        // );
+        gizmos.circle_2d(
             *position,
-            *rotation,
-            Vec2::splat(ICON_SIZE),
+            ICON_SIZE / 2.0 + 8.0,
             if hovered.0 == Some(entity) {
                 Color::RED
             } else {
                 Color::BLACK
             },
         );
-        // gizmos.circle_2d(
-        //     *position,
-        //     ICON_SIZE / 2.0 + 8.0,
-        // );
     }
 }
 

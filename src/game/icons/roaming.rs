@@ -7,6 +7,7 @@ use super::{
     components::{IconTransform, IconVelocity},
     resources::{SpatialIndexResource, UpdateTimer, WorldBoundaryResource},
     spatial::SpatialIndex,
+    IconPlayerController,
 };
 
 pub struct IconRoamingPlugin;
@@ -250,7 +251,7 @@ fn update_icon_roaming_velocity(
     mut timer: ResMut<UpdateTimer>,
     settings: Res<SettingsResource>,
     spatial_index: Res<SpatialIndexResource>,
-    mut query: Query<RoamingQuery>,
+    mut query: Query<RoamingQuery, Without<IconPlayerController>>,
     boundaries: Res<WorldBoundaryResource>,
 ) {
     timer.0.tick(time.delta());
