@@ -132,7 +132,7 @@ jobs:
   
       - name: Remove development rust configs
         run: |
-          rmdir /s /q .cargo
+          del .cargo\config.toml
           del rust-toolchain
 
       - name: Build
