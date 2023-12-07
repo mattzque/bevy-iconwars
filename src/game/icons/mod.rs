@@ -4,24 +4,24 @@ use bevy::render::mesh::shape;
 use bevy::render::view::NoFrustumCulling;
 use bevy::sprite::Mesh2dHandle;
 use bevy::utils::Instant;
-use bevy::window::PrimaryWindow;
-use bevy_prototype_lyon::prelude::*;
 use rand::prelude::*;
 
+use crate::game::icons::commands::CircleShapeCommand;
 use crate::game::icons::components::{
-    IconEntity, IconHoveredCircle, IconInstanceData, IconPlayerCircle, IconRenderEntity,
-    IconSheetRef, IconVelocity, SheetIndex,
+    IconEntity, IconInstanceData, IconPlayerCircle, IconRenderEntity, IconSheetRef, IconType,
+    IconVelocity, SheetIndex, Type,
 };
 use crate::game::icons::resources::{HoveredIcon, SpatialIndexResource};
 
 use self::resources::UpdateTimer;
 
 use super::assets::icons::IconSheetAsset;
-use super::camera::CameraTag;
 use super::settings::SettingsResource;
 use super::states::GameState;
 use super::world::WorldBoundaryResource;
 
+mod capture;
+pub mod commands;
 mod components;
 mod controller;
 mod renderer;
@@ -33,6 +33,7 @@ pub use components::{IconPlayerController, IconTransform};
 pub use resources::IconSheetResource;
 
 pub const ICON_SIZE: f32 = 32.0;
+pub const ICON_CIRCLE_RADIUS: f32 = ICON_SIZE / 2.0 + 8.0;
 pub const ICON_MIN_DISTANCE: f32 = 45.25 + 15.0;
 pub const SPATIAL_GRID_SIZE: f32 = 128.0; // TODO: huge performance impact, tune this later!
 
@@ -46,18 +47,31 @@ impl Plugin for IconPlugin {
             renderer::IconRendererPlugin,
             roaming::IconRoamingPlugin,
             controller::IconPlayerControllerPlugin,
+            capture::IconCapturePlugin,
         ));
         app.add_systems(OnEnter(GameState::GameLoading), init_icons_system);
         app.add_systems(
             Update,
             (
-                update_hovered_icon_system,
                 apply_icon_velocity,
                 update_icon_instance_data,
+                fix_free_items_in_dropzone,
             )
                 .chain()
                 .run_if(in_state(GameState::GameRunning)),
         );
+    }
+}
+
+fn random_position_in_bounds(rng: &mut ThreadRng, boundaries: &WorldBoundaryResource) -> Vec2 {
+    loop {
+        let position = Vec2::new(
+            rng.gen_range(boundaries.bounds_min.x..boundaries.bounds_max.x),
+            rng.gen_range(boundaries.bounds_min.y..boundaries.bounds_max.y),
+        );
+        if !boundaries.in_dropzone(position) {
+            return position;
+        }
     }
 }
 
@@ -95,13 +109,7 @@ fn init_icons_system(
             .for_each(|(icon_index, icon)| {
                 loop {
                     // candidate:
-                    let position = Vec2::new(
-                        rng.gen_range(bounds_min.x..bounds_max.x),
-                        rng.gen_range(bounds_min.y..bounds_max.y),
-                    );
-                    if boundaries.in_dropzone(position) {
-                        continue;
-                    }
+                    let position = random_position_in_bounds(&mut rng, &boundaries);
 
                     // search for collisions:
                     let mut collision = false;
@@ -143,6 +151,7 @@ fn init_icons_system(
                             },
                             IconTransform { position, rotation },
                             IconVelocity(velocity),
+                            IconType(if is_player { Type::Player } else { Type::Free }),
                         ))
                         .id();
 
@@ -194,85 +203,17 @@ fn init_icons_system(
         NoAutomaticBatching,
     ));
 
-    // TODO refactor
-    let mut builder = GeometryBuilder::new();
-    builder = builder.add(&shapes::Circle {
-        radius: ICON_SIZE / 2.0 + 8.0,
-        center: Vec2::ZERO,
+    commands.add(CircleShapeCommand::<IconPlayerCircle> {
+        radius: ICON_CIRCLE_RADIUS,
+        position: player_position,
+        color: "#444c56",
+        tag: IconPlayerCircle,
+        ..Default::default()
     });
-    commands.spawn((
-        ShapeBundle {
-            path: builder.build(),
-            spatial: SpatialBundle {
-                transform: Transform::from_translation(Vec3::new(
-                    player_position.x,
-                    player_position.y,
-                    1.0,
-                )),
-                ..Default::default()
-            },
-            ..Default::default()
-        },
-        Stroke::new(Color::hex("#444c56").unwrap(), 1.0),
-        IconPlayerCircle,
-    ));
-
-    // TODO refactor
-    let mut builder = GeometryBuilder::new();
-    builder = builder.add(&shapes::Circle {
-        radius: ICON_SIZE / 2.0 + 8.0,
-        center: Vec2::ZERO,
-    });
-    commands.spawn((
-        ShapeBundle {
-            path: builder.build(),
-            spatial: SpatialBundle {
-                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
-                visibility: Visibility::Hidden,
-                ..Default::default()
-            },
-            ..Default::default()
-        },
-        Stroke::new(Color::hex("#444c56").unwrap(), 1.0),
-        IconHoveredCircle,
-    ));
 
     commands.insert_resource(SpatialIndexResource(spatial_index));
 
     state.set(GameState::GameRunning);
-}
-
-fn update_hovered_icon_system(
-    mut commands: Commands,
-    window: Query<&Window, With<PrimaryWindow>>,
-    camera: Query<(&Camera, &GlobalTransform), With<CameraTag>>,
-    index: Res<SpatialIndexResource>,
-    mut hovered_circle: Query<(&mut Visibility, &mut Transform), With<IconHoveredCircle>>,
-) {
-    let (camera, camera_transform) = camera.single();
-    let window = window.single();
-    if let Some(world_position) = window
-        .cursor_position()
-        .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
-        .map(|ray| ray.origin.truncate())
-    {
-        let threshold = 16.0;
-        let result = index
-            .0
-            .query(world_position, ICON_SIZE / 2.0 + threshold)
-            .next();
-        commands.insert_resource(HoveredIcon(result.clone().map(|r| r.key)));
-
-        if let Ok((mut visibility, mut transform)) = hovered_circle.get_single_mut() {
-            if let Some(result) = result.as_ref() {
-                transform.translation.x = result.position.x;
-                transform.translation.y = result.position.y;
-                *visibility = Visibility::Visible;
-            } else {
-                *visibility = Visibility::Hidden;
-            }
-        }
-    }
 }
 
 fn update_icon_instance_data(
@@ -289,15 +230,14 @@ pub fn apply_icon_velocity(
     time: Res<Time>,
     settings: Res<SettingsResource>,
     mut spatial_index: ResMut<SpatialIndexResource>,
-    mut query: Query<(
-        Entity,
-        &mut IconTransform,
-        &IconVelocity,
-        Has<IconPlayerController>,
-    )>,
+    mut query: Query<(Entity, &mut IconTransform, &IconVelocity, &IconType)>,
     mut player_circle: Query<&mut Transform, With<IconPlayerCircle>>,
 ) {
-    for (entity, mut position, velocity, is_player) in query.iter_mut() {
+    for (entity, mut position, velocity, icon_type) in query.iter_mut() {
+        if icon_type.0 == Type::Captured {
+            continue;
+        }
+
         position.position += velocity.0 * (time.delta_seconds() * settings.velocity_time_scale);
 
         // update spatial index with new position and velocity
@@ -305,10 +245,41 @@ pub fn apply_icon_velocity(
             .0
             .insert(entity, position.position, velocity.0);
 
-        if is_player {
+        if icon_type.0 == Type::Player {
             let mut player_circle = player_circle.single_mut();
             player_circle.translation.x = position.position.x;
             player_circle.translation.y = position.position.y;
+        }
+    }
+}
+
+// sometimes it might happen that free roaming items occur inside the dropzone
+// we manually move them outside the dropzone:
+pub fn fix_free_items_in_dropzone(
+    boundaries: Res<WorldBoundaryResource>,
+    mut spatial_index: ResMut<SpatialIndexResource>,
+    mut query: Query<(Entity, &mut IconTransform, &IconVelocity, &IconType)>,
+    time: Res<Time>,
+    mut timer: Local<Option<Timer>>,
+) {
+    if timer.is_none() {
+        *timer = Some(Timer::from_seconds(1.0, TimerMode::Repeating));
+    }
+
+    if let Some(timer) = timer.as_mut() {
+        timer.tick(time.delta());
+        if !timer.finished() {
+            return;
+        }
+    }
+
+    let mut rng = rand::thread_rng();
+    for (entity, mut transform, velocity, icon_type) in query.iter_mut() {
+        if icon_type.0 == Type::Free && boundaries.in_dropzone(transform.position) {
+            let new_position = random_position_in_bounds(&mut rng, &boundaries);
+
+            transform.position = new_position;
+            spatial_index.0.insert(entity, new_position, velocity.0);
         }
     }
 }

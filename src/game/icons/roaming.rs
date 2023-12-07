@@ -1,14 +1,20 @@
 use bevy::prelude::*;
-use bevy::utils::Instant;
+// use bevy::utils::Instant;
 
 use crate::game::{settings::SettingsResource, states::GameState, world::WorldBoundaryResource};
 
 use super::{
-    components::{IconTransform, IconVelocity},
+    components::{IconTransform, IconType, IconVelocity, Type},
     resources::{SpatialIndexResource, UpdateTimer},
     spatial::SpatialIndex,
-    IconPlayerController,
 };
+
+type RoamingQuery = (
+    Entity,
+    &'static mut IconTransform,
+    &'static mut IconVelocity,
+    &'static IconType,
+);
 
 pub struct IconRoamingPlugin;
 
@@ -153,14 +159,6 @@ fn get_cohesion_force(
     }
 }
 
-type RoamingQuery = (
-    Entity,
-    &'static mut IconTransform,
-    &'static mut IconVelocity,
-);
-
-use bevy::math::Vec2;
-
 fn get_nearest_point_in_perimeter(point: Vec2, boundary_min: Vec2, boundary_max: Vec2) -> Vec2 {
     // Clamp the point within the boundary
     let clamped_point = point.clamp(boundary_min, boundary_max);
@@ -216,7 +214,22 @@ fn get_icon_velocity(
     spatial_index: &SpatialIndex<Entity>,
     settings: &SettingsResource,
     boundaries: &WorldBoundaryResource,
+    target_position: &Vec2,
+    icon_type: &IconType,
+    _query: &Query<RoamingQuery>,
 ) -> Vec2 {
+    let mut max_force = settings.max_force;
+    let mut max_speed = settings.max_speed;
+
+    if icon_type.0 == Type::Captured {
+        return Vec2::ZERO;
+    }
+
+    if icon_type.0 == Type::Follower {
+        max_speed = settings.seek_max_speed;
+        max_force = settings.seek_max_force;
+    }
+
     let collision_force = get_separation_force(
         entity,
         *position,
@@ -224,8 +237,8 @@ fn get_icon_velocity(
         *velocity,
         spatial_index,
         settings.collision_distance,
-        settings.max_speed,
-        settings.max_force,
+        max_speed,
+        max_force,
     );
     let separation_force = get_separation_force(
         entity,
@@ -234,8 +247,8 @@ fn get_icon_velocity(
         *velocity,
         spatial_index,
         settings.collision_distance,
-        settings.max_speed,
-        settings.max_force,
+        max_speed,
+        max_force,
     );
     let alignment_force = get_alignment_force(
         entity,
@@ -244,8 +257,8 @@ fn get_icon_velocity(
         *velocity,
         spatial_index,
         settings.alignment_distance,
-        settings.max_speed,
-        settings.max_force,
+        max_speed,
+        max_force,
     );
     let cohesion_force = get_cohesion_force(
         entity,
@@ -254,8 +267,8 @@ fn get_icon_velocity(
         *velocity,
         spatial_index,
         settings.cohesion_distance,
-        settings.max_speed,
-        settings.max_force,
+        max_speed,
+        max_force,
     );
 
     // println!("collision_force: {:?}", collision_force);
@@ -266,16 +279,10 @@ fn get_icon_velocity(
     acceleration += cohesion_force * settings.cohesion_weight;
     acceleration += collision_force * settings.collision_weight;
 
-    // if let Some(target_position) = target.position {
-    //     let force = get_seek_force(
-    //         position.0,
-    //         velocity.0,
-    //         target_position,
-    //         settings.max_speed,
-    //         settings.max_force,
-    //     );
-    //     acceleration += force * settings.seek_weight;
-    // }
+    if icon_type.0 == Type::Follower {
+        let force = get_seek_force(*position, *velocity, *target_position, max_speed, max_force);
+        acceleration += force * settings.seek_weight;
+    }
 
     // Boundary avoidance
     if position.x < boundaries.bounds_min.x {
@@ -318,11 +325,21 @@ fn get_icon_velocity(
     //     }
     // }
 
-    acceleration = limit_vec2(acceleration, settings.max_force);
+    acceleration = limit_vec2(acceleration, max_force);
 
     // println!("velocity={:?} acceleration={:?}", velocity, acceleration);
 
-    limit_vec2(*velocity + acceleration, settings.max_speed)
+    let mut velocity = limit_vec2(*velocity + acceleration, max_speed);
+
+    if velocity.x.is_nan() {
+        velocity.x = 0.0;
+    }
+
+    if velocity.y.is_nan() {
+        velocity.y = 0.0;
+    }
+
+    velocity
 }
 
 fn update_icon_roaming_velocity(
@@ -330,7 +347,7 @@ fn update_icon_roaming_velocity(
     mut timer: ResMut<UpdateTimer>,
     settings: Res<SettingsResource>,
     spatial_index: Res<SpatialIndexResource>,
-    mut query: Query<RoamingQuery, Without<IconPlayerController>>,
+    mut query: Query<RoamingQuery>,
     boundaries: Res<WorldBoundaryResource>,
 ) {
     timer.0.tick(time.delta());
@@ -338,34 +355,58 @@ fn update_icon_roaming_velocity(
         return;
     }
 
-    let start = Instant::now();
+    // let start = Instant::now();
+    let player_position = query
+        .iter()
+        .find_map(|(_, IconTransform { position, .. }, _, icon_type)| {
+            if icon_type.0 == Type::Player {
+                Some(position)
+            } else {
+                None
+            }
+        })
+        .unwrap();
 
     let velocities = query
         .iter()
-        .map(|(entity, IconTransform { position, rotation }, velocity)| {
-            (
-                entity,
-                get_icon_velocity(
+        .map(
+            |(entity, IconTransform { position, rotation }, velocity, icon_type)| {
+                (
                     entity,
-                    position,
-                    rotation,
-                    &velocity.0,
-                    &spatial_index.0,
-                    &settings,
-                    &boundaries,
-                ),
-            )
-        })
+                    get_icon_velocity(
+                        entity,
+                        position,
+                        rotation,
+                        &velocity.0,
+                        &spatial_index.0,
+                        &settings,
+                        &boundaries,
+                        player_position,
+                        icon_type,
+                        &query,
+                    ),
+                )
+            },
+        )
         .collect::<Vec<(Entity, Vec2)>>();
 
     for (entity, velocity) in velocities.into_iter() {
-        if let Ok((_, mut icon_transform, mut icon_velocity)) = query.get_mut(entity) {
+        if let Ok((_, mut icon_transform, mut icon_velocity, icon_type)) = query.get_mut(entity) {
+            if icon_type.0 == Type::Player || icon_type.0 == Type::Captured {
+                // player moves the icon
+                continue;
+            }
+
             icon_velocity.0 = velocity;
 
             // rotation/angle in radians from velocity vector...
             icon_transform.rotation = velocity.y.atan2(velocity.x);
+
+            if icon_transform.rotation.is_nan() {
+                println!("THIS IS A BUG rotation is NaN! velocity={:?}", velocity);
+            }
         }
     }
 
-    debug!("update_icon_velocity in {:?}", start.elapsed());
+    // debug!("update_icon_velocity in {:?}", start.elapsed());
 }

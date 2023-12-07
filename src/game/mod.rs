@@ -3,6 +3,7 @@ use bevy::prelude::*;
 mod assets;
 mod camera;
 mod debug;
+mod hud;
 mod icons;
 mod render;
 mod settings;
@@ -21,6 +22,7 @@ impl Plugin for GamePlugin {
             icons::IconPlugin,
             render::RenderPlugin,
             camera::CameraPlugin,
+            hud::HudPlugin,
         ));
 
         app.add_plugins(debug::DebugPlugin);

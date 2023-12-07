@@ -66,6 +66,13 @@ pub fn render_settings_gui(mut settings: ResMut<SettingsResource>, mut contexts:
         ui.add(
             egui::Slider::new(&mut settings.cohesion_weight, 0.0..=10.0).text("Cohesion Weight"),
         );
+        ui.add(egui::Slider::new(&mut settings.seek_weight, 0.0..=100.0).text("Follower: Weight"));
+        ui.add(
+            egui::Slider::new(&mut settings.seek_max_speed, 0.0..=2.0).text("Follower: Max Speed"),
+        );
+        ui.add(
+            egui::Slider::new(&mut settings.seek_max_force, 0.0..=2.0).text("Follower: Max Force"),
+        );
         ui.add(
             egui::Slider::new(&mut settings.controller_turn_speed, 0.0..=10.0)
                 .text("Controller Turn Speed"),
@@ -81,6 +88,15 @@ pub fn render_settings_gui(mut settings: ResMut<SettingsResource>, mut contexts:
         ui.add(
             egui::Slider::new(&mut settings.controller_max_speed, 0.0..=1000.0)
                 .text("Controller Max Speed"),
+        );
+
+        ui.add(
+            egui::Slider::new(&mut settings.max_hover_distance, 0.0..=1000.0)
+                .text("Max Hover Distance"),
+        );
+        ui.add(
+            egui::Slider::new(&mut settings.capture_time, 0.0..=10.0)
+                .text("Time to Capture (secs)"),
         );
     });
 }

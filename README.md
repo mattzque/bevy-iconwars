@@ -29,6 +29,32 @@ License: [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) + MIT
 * [`@fortawesome/free-regular-svg-icons`](https://www.npmjs.com/package/@fortawesome/free-regular-svg-icons)
 * [`@fortawesome/free-brands-svg-icons`](https://www.npmjs.com/package/@fortawesome/free-brands-svg-icons)
 
+### Fonts
+
+* [Gasoek One](https://fonts.google.com/specimen/Gasoek+One), SIL Open Font License. Designed by Jiashuo Zhang, JAMO
+
+> Copyright 2022 The Gasoek Project Authors (https://github.com/JAMO-TYPEFACE/Gasoek)
+> 
+> This Font Software is licensed under the SIL Open Font License, Version 1.1.
+> This license is copied below, and is also available with a FAQ at:
+> http://scripts.sil.org/OFL
+
+* [DM Sans](https://fonts.google.com/specimen/DM+Sans), SIL Open Font License. Designed by Colophon Foundry, Jonny Pinhorn, Indian Type Foundry.
+
+> Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts)
+>                                                                                                   
+> This Font Software is licensed under the SIL Open Font License, Version 1.1.
+> This license is copied below, and is also available with a FAQ at:
+> http://scripts.sil.org/OFL
+
+### Background Music
+
+* [From the Stillness of Winter](https://freemusicarchive.org/music/Brylie_Christopher_Oxley/liminal-space/from-the-stillness-of-winter/) by Brylie Christopher Oxley is licensed under a Attribution 4.0 International License.
+* [Praise the Day](https://freemusicarchive.org/music/Brylie_Christopher_Oxley/liminal-space/praise-the-day/) by Brylie Christopher Oxley is licensed under a Attribution 4.0 International License.
+* [Pack Dynamic](https://freemusicarchive.org/music/Brylie_Christopher_Oxley/liminal-space/pack-dynamic/) by Brylie Christopher Oxley is licensed under a Attribution 4.0 International License.
+* [Silver Linings](https://freemusicarchive.org/music/Brylie_Christopher_Oxley/liminal-space/silver-linings/) by Brylie Christopher Oxley is licensed under a Attribution 4.0 International License.
+* [Our Slow Recovery](https://freemusicarchive.org/music/Brylie_Christopher_Oxley/liminal-space/our-slow-recovery/) by Brylie Christopher Oxley is licensed under a Attribution 4.0 International License.
+
 ### Dependencies
 
 * [`bevy`](https://crates.io/crates/bevy) (MIT OR Apache-2.0)

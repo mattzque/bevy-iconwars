@@ -6,15 +6,41 @@ use bevy::prelude::*;
 #[derive(Component, Debug)]
 pub struct IconEntity;
 
-#[derive(Component, Debug)]
-pub struct IconPlayerCircle;
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Type {
+    Player,
+    Follower,
+    Free,
+    Captured,
+}
 
 #[derive(Component, Debug)]
+pub struct IconType(pub Type);
+
+#[derive(Component, Debug, Default)]
+pub struct IconPlayerCircle;
+
+#[derive(Component, Debug, Default)]
 pub struct IconHoveredCircle;
+
+#[derive(Component, Debug, Default)]
+pub struct IconCaptureProgressLine;
+
+#[derive(Component, Debug)]
+pub struct IconFollowerCircle(pub Entity);
+
+#[derive(Component, Debug)]
+pub struct IconFollowerLine(pub Entity);
 
 /// Render all entities using this single entity, thats not cheating, right? =)
 #[derive(Component, Debug)]
 pub struct IconRenderEntity;
+
+#[derive(Debug)]
+pub struct SheetIndex {
+    pub sheet_index: u32,
+    pub tile_uv: Vec2,
+}
 
 #[derive(Component, Debug)]
 pub struct IconInstanceData {
@@ -24,12 +50,6 @@ pub struct IconInstanceData {
     /// Transforms of each icon, x, y and rotation.
     /// References which sheet and the UV coordinate in the sheet
     pub instances: BTreeMap<Entity, (Vec3, SheetIndex)>,
-}
-
-#[derive(Debug)]
-pub struct SheetIndex {
-    pub sheet_index: u32,
-    pub tile_uv: Vec2,
 }
 
 impl IconInstanceData {

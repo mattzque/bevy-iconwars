@@ -7,6 +7,7 @@ use bevy::render::texture::{ImageFilterMode, ImageSampler, ImageSamplerDescripto
 
 use self::icons::IconSheetAsset;
 
+use super::hud::FontResource;
 use super::icons::IconSheetResource;
 use super::states::GameState;
 
@@ -35,12 +36,19 @@ fn load_assets_system(
     server: Res<AssetServer>,
     mut state: ResMut<NextState<GameState>>,
 ) {
+    let font: Handle<Font> = server.load("fonts/GasoekOne-Regular.ttf");
     let icons: Handle<IconSheetAsset> = server.load("icons.icon.json");
     commands.insert_resource(IconSheetResource {
         handle: icons.clone(),
         texture_array: None,
     });
-    commands.insert_resource(PendingAssets(HashSet::from_iter(vec![icons.untyped()])));
+    commands.insert_resource(FontResource {
+        handle: font.clone(),
+    });
+    commands.insert_resource(PendingAssets(HashSet::from_iter(vec![
+        icons.untyped(),
+        font.untyped(),
+    ])));
     state.set(GameState::AssetsLoading);
 }
 

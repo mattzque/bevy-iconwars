@@ -18,11 +18,18 @@ pub struct SettingsResource {
     pub collision_weight: f32,
     pub alignment_weight: f32,
     pub cohesion_weight: f32,
+
     pub seek_weight: f32,
+    pub seek_max_speed: f32,
+    pub seek_max_force: f32,
+
     pub controller_turn_speed: f32,
     pub controller_acceleration: f32,
     pub controller_dampening: f32,
     pub controller_max_speed: f32,
+
+    pub max_hover_distance: f32,
+    pub capture_time: f32,
 }
 
 impl Default for SettingsResource {
@@ -47,12 +54,18 @@ impl Default for SettingsResource {
             alignment_weight: 2.95,
             cohesion_weight: 0.3,
 
-            seek_weight: 0.1,
+            seek_weight: 7.0,
+            seek_max_speed: 0.78,
+            seek_max_force: 0.08,
 
             controller_turn_speed: 3.85,
             controller_acceleration: 35.0,
             controller_dampening: 210.0,
             controller_max_speed: 100.0,
+
+            max_hover_distance: 880.0,
+
+            capture_time: 5.0,
         }
     }
 }
