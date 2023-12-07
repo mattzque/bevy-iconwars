@@ -1,6 +1,8 @@
+use super::camera::{CAMERA_LAYER, CAMERA_Z_BACKGROUND};
 use super::states::GameState;
 use bevy::prelude::*;
 use bevy::render::batching::NoAutomaticBatching;
+use bevy::render::view::RenderLayers;
 use bevy_prototype_lyon::prelude::*;
 
 #[derive(Resource)]
@@ -48,7 +50,7 @@ impl Plugin for WorldPlugin {
         app.insert_resource(WorldBoundaryResource::default());
         app.add_plugins(ShapePlugin);
         // app.add_systems(OnEnter(GameState::GameLoading), setup_world_grid);
-        app.add_systems(OnEnter(GameState::GameRunning), setup_world_grid);
+        app.add_systems(OnEnter(GameState::GameLoading), setup_world_grid);
     }
 }
 
@@ -84,13 +86,18 @@ fn setup_world_grid(mut commands: Commands, boundary: Res<WorldBoundaryResource>
         ShapeBundle {
             path: builder.build(),
             spatial: SpatialBundle {
-                transform: Transform::from_translation(Vec3::new(0.0, 0.0, -2.0)),
+                transform: Transform::from_translation(Vec3::new(
+                    0.0,
+                    0.0,
+                    CAMERA_Z_BACKGROUND - 1.0,
+                )),
                 ..Default::default()
             },
             ..Default::default()
         },
         Fill::color(Color::hex("#22272e").unwrap()),
         Stroke::new(Color::hex("#444c56").unwrap(), 1.0),
+        RenderLayers::layer(CAMERA_LAYER),
         NoAutomaticBatching,
     ));
 
@@ -106,13 +113,14 @@ fn setup_world_grid(mut commands: Commands, boundary: Res<WorldBoundaryResource>
         ShapeBundle {
             path: builder.build(),
             spatial: SpatialBundle {
-                transform: Transform::from_translation(Vec3::new(0.0, 0.0, -1.0)),
+                transform: Transform::from_translation(Vec3::new(0.0, 0.0, CAMERA_Z_BACKGROUND)),
                 ..Default::default()
             },
             ..Default::default()
         },
         Fill::color(Color::hex("#2d333b").unwrap()),
         Stroke::new(Color::hex("#444c56").unwrap(), 1.0),
+        RenderLayers::layer(CAMERA_LAYER),
         NoAutomaticBatching,
     ));
 }

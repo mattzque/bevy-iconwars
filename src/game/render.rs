@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 pub struct RenderPlugin;
 
-const CLEAR_COLOR: &str = "#000000";
+const CLEAR_COLOR: &str = "#121418";
 
 impl Plugin for RenderPlugin {
     fn build(&self, app: &mut App) {
@@ -15,8 +15,4 @@ impl Plugin for RenderPlugin {
 
 fn spawn_render_globals(mut commands: Commands) {
     commands.insert_resource(Msaa::Sample4);
-    commands.insert_resource(AmbientLight {
-        color: Color::WHITE,
-        brightness: 0.9,
-    });
 }

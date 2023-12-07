@@ -1,8 +1,19 @@
+use bevy::core_pipeline::clear_color::ClearColorConfig;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
+use bevy::render::camera::CameraOutputMode;
+use bevy::render::render_resource::{BlendState, LoadOp};
+use bevy::render::view::RenderLayers;
 
 use super::icons::{IconPlayerController, IconTransform};
 use super::states::GameState;
+
+pub const CAMERA_LAYER: u8 = 1;
+pub const CAMERA_LAYER_UI: u8 = 2;
+
+pub const CAMERA_Z_BACKGROUND: f32 = -10.0;
+pub const CAMERA_Z_ICONS: f32 = 0.0;
+pub const CAMERA_Z_VFX: f32 = 1.0;
 
 pub struct CameraPlugin;
 
@@ -21,26 +32,45 @@ impl Plugin for CameraPlugin {
 #[derive(Component)]
 pub struct CameraTag;
 
+#[derive(Component)]
+pub struct UiCameraTag;
+
 fn setup_cameras(mut commands: Commands) {
     commands.spawn((
         Camera2dBundle {
-            // projection: OrthographicProjection {
-            //     // scale: 2.7,
-            //     // scale: 0.8,
-            //     ..Default::default()
-            // },
-            // camera: Camera {
-            //     // order: 1,
-            //     // is_active: true,
-            //     ..Default::default()
-            // },
+            camera: Camera {
+                order: 0,
+                is_active: false,
+                ..Default::default()
+            },
             ..Default::default()
         },
+        RenderLayers::layer(CAMERA_LAYER),
         CameraTag,
+    ));
+
+    commands.spawn((
+        Camera2dBundle {
+            camera_2d: Camera2d {
+                clear_color: ClearColorConfig::Custom(Color::rgba(0.0, 0.0, 0.0, 0.0)),
+            },
+            camera: Camera {
+                order: 1,
+                is_active: true,
+                output_mode: CameraOutputMode::Write {
+                    blend_state: Some(BlendState::ALPHA_BLENDING),
+                    color_attachment_load_op: LoadOp::Load,
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        RenderLayers::layer(CAMERA_LAYER_UI),
+        UiCameraTag,
     ));
 }
 
-fn make_camera_visible(mut query: Query<&mut Camera, With<Camera>>) {
+fn make_camera_visible(mut query: Query<&mut Camera, With<CameraTag>>) {
     query.single_mut().is_active = true;
 }
 
@@ -62,7 +92,7 @@ fn camera_zoom_system(
 
 fn camera_follow_player_icon_system(
     player_icon: Query<&IconTransform, With<IconPlayerController>>,
-    mut query: Query<&mut Transform, With<Camera>>,
+    mut query: Query<&mut Transform, With<CameraTag>>,
 ) {
     if let Ok(IconTransform { position, .. }) = player_icon.get_single() {
         let mut camera = query.single_mut();

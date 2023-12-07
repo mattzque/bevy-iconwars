@@ -1,3 +1,4 @@
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 
 mod assets;
@@ -25,6 +26,6 @@ impl Plugin for GamePlugin {
             hud::HudPlugin,
         ));
 
-        app.add_plugins(debug::DebugPlugin);
+        app.add_plugins((debug::DebugPlugin, FrameTimeDiagnosticsPlugin));
     }
 }

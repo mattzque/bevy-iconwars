@@ -55,6 +55,10 @@ License: [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) + MIT
 * [Silver Linings](https://freemusicarchive.org/music/Brylie_Christopher_Oxley/liminal-space/silver-linings/) by Brylie Christopher Oxley is licensed under a Attribution 4.0 International License.
 * [Our Slow Recovery](https://freemusicarchive.org/music/Brylie_Christopher_Oxley/liminal-space/our-slow-recovery/) by Brylie Christopher Oxley is licensed under a Attribution 4.0 International License.
 
+### Sound Effects
+
+* [50 CC0 Sci-Fi SFX by rubberduck](https://opengameart.org/content/50-cc0-sci-fi-sfx), Public Domain
+
 ### Dependencies
 
 * [`bevy`](https://crates.io/crates/bevy) (MIT OR Apache-2.0)

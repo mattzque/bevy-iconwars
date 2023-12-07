@@ -1,15 +1,16 @@
 use bevy::prelude::*;
 use bevy::render::batching::NoAutomaticBatching;
 use bevy::render::mesh::shape;
-use bevy::render::view::NoFrustumCulling;
+use bevy::render::view::{NoFrustumCulling, RenderLayers};
 use bevy::sprite::Mesh2dHandle;
 use bevy::utils::Instant;
 use rand::prelude::*;
 
+use crate::game::camera::{CAMERA_LAYER, CAMERA_Z_ICONS};
 use crate::game::icons::commands::CircleShapeCommand;
 use crate::game::icons::components::{
-    IconEntity, IconInstanceData, IconPlayerCircle, IconRenderEntity, IconSheetRef, IconType,
-    IconVelocity, SheetIndex, Type,
+    IconEntity, IconInstanceData, IconPlayerCircle, IconRenderEntity, IconSheetRef, IconVelocity,
+    SheetIndex,
 };
 use crate::game::icons::resources::{HoveredIcon, SpatialIndexResource};
 
@@ -29,7 +30,7 @@ mod resources;
 mod roaming;
 mod spatial;
 
-pub use components::{IconPlayerController, IconTransform};
+pub use components::{IconPlayerController, IconTransform, IconType, Type};
 pub use resources::IconSheetResource;
 
 pub const ICON_SIZE: f32 = 32.0;
@@ -195,9 +196,10 @@ fn init_icons_system(
         IconRenderEntity,
         Mesh2dHandle(mesh_handle),
         SpatialBundle {
-            transform: Transform::from_translation(Vec3::ZERO),
+            transform: Transform::from_translation(Vec3::new(0.0, 0.0, CAMERA_Z_ICONS)),
             ..Default::default()
         },
+        RenderLayers::layer(CAMERA_LAYER),
         IconInstanceData::new(resource.texture_array.clone().unwrap(), instances),
         NoFrustumCulling,
         NoAutomaticBatching,

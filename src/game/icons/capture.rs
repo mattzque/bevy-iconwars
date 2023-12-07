@@ -97,17 +97,15 @@ impl Plugin for IconCapturePlugin {
 fn init_capture(mut commands: Commands) {
     commands.add(CircleShapeCommand::<IconHoveredCircle> {
         radius: ICON_CIRCLE_RADIUS,
-        z: 1.0,
         color: "#884c56",
         stroke_width: 4.0,
-        visibility: Visibility::Hidden,
+        visibility: Visibility::Visible,
         ..Default::default()
     });
     commands.add(LineShapeCommand::<IconCaptureProgressLine> {
-        z: 1.0,
         color: "#884c56",
         stroke_width: 4.0,
-        visibility: Visibility::Hidden,
+        visibility: Visibility::Visible,
         ..Default::default()
     });
 }
@@ -129,6 +127,9 @@ fn update_hovered_icon_system(
     let (_player, player_transform) = player.single();
     // player cant hover items while she is in the drop zone!
     if boundaries.in_dropzone(player_transform.position) {
+        commands.insert_resource(HoveredIcon(None));
+        let (mut visibility, _) = hovered_circle.single_mut();
+        *visibility = Visibility::Hidden;
         return;
     }
 
@@ -159,6 +160,7 @@ fn update_hovered_icon_system(
             if icon_type != Type::Free || distance_to_player > settings.max_hover_distance {
                 return;
             }
+            println!("hovering: {:?}", result);
 
             commands.insert_resource(HoveredIcon(Some(result.key)));
             let (mut visibility, mut transform) = hovered_circle.single_mut();
@@ -304,7 +306,6 @@ fn update_follower_paths(
             commands.add(LineShapeCommand::<IconFollowerLine> {
                 start,
                 end,
-                z: 0.9,
                 color: "#884c56",
                 stroke_width: 4.0,
                 visibility: Visibility::Visible,
@@ -314,7 +315,6 @@ fn update_follower_paths(
             commands.add(CircleShapeCommand::<IconFollowerCircle> {
                 radius: ICON_CIRCLE_RADIUS,
                 position: transform.position,
-                z: 0.9,
                 color: "#884c56",
                 stroke_width: 4.0,
                 visibility: Visibility::Visible,

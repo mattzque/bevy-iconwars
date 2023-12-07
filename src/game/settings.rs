@@ -65,7 +65,7 @@ impl Default for SettingsResource {
 
             max_hover_distance: 880.0,
 
-            capture_time: 5.0,
+            capture_time: 0.1,
         }
     }
 }

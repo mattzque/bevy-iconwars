@@ -36,18 +36,21 @@ fn load_assets_system(
     server: Res<AssetServer>,
     mut state: ResMut<NextState<GameState>>,
 ) {
-    let font: Handle<Font> = server.load("fonts/GasoekOne-Regular.ttf");
+    let font_title: Handle<Font> = server.load("fonts/GasoekOne-Regular.ttf");
+    let font_text: Handle<Font> = server.load("fonts/DMSans-Black.ttf");
     let icons: Handle<IconSheetAsset> = server.load("icons.icon.json");
     commands.insert_resource(IconSheetResource {
         handle: icons.clone(),
         texture_array: None,
     });
     commands.insert_resource(FontResource {
-        handle: font.clone(),
+        title: font_title.clone(),
+        text: font_text.clone(),
     });
     commands.insert_resource(PendingAssets(HashSet::from_iter(vec![
         icons.untyped(),
-        font.untyped(),
+        font_title.untyped(),
+        font_text.untyped(),
     ])));
     state.set(GameState::AssetsLoading);
 }

@@ -1,7 +1,10 @@
 use bevy::ecs::system::Command;
 use bevy::prelude::*;
-use bevy::render::view::NoFrustumCulling;
+use bevy::render::batching::NoAutomaticBatching;
+use bevy::render::view::{NoFrustumCulling, RenderLayers};
 use bevy_prototype_lyon::prelude::*;
+
+use crate::game::camera::{CAMERA_LAYER, CAMERA_Z_VFX};
 
 use super::ICON_CIRCLE_RADIUS;
 
@@ -9,7 +12,6 @@ pub struct CircleShapeCommand<T> {
     pub radius: f32,
     pub position: Vec2,
     pub stroke_width: f32,
-    pub z: f32,
     pub visibility: Visibility,
     pub color: &'static str,
     pub tag: T,
@@ -24,7 +26,6 @@ where
             radius: ICON_CIRCLE_RADIUS,
             position: Vec2::ZERO,
             stroke_width: 1.0,
-            z: 1.0,
             visibility: Visibility::Visible,
             color: "#ffffff",
             tag: T::default(),
@@ -42,6 +43,7 @@ where
             radius: self.radius,
             center: Vec2::ZERO,
         });
+        println!("circle spawn!");
         world.spawn((
             ShapeBundle {
                 path: builder.build(),
@@ -49,7 +51,7 @@ where
                     transform: Transform::from_translation(Vec3::new(
                         self.position.x,
                         self.position.y,
-                        self.z,
+                        CAMERA_Z_VFX,
                     )),
                     visibility: self.visibility,
                     ..Default::default()
@@ -57,7 +59,9 @@ where
                 ..Default::default()
             },
             Stroke::new(Color::hex(self.color).unwrap(), self.stroke_width),
+            RenderLayers::layer(CAMERA_LAYER),
             self.tag,
+            NoAutomaticBatching,
             NoFrustumCulling,
         ));
     }
@@ -67,7 +71,6 @@ pub struct LineShapeCommand<T> {
     pub start: Vec2,
     pub end: Vec2,
     pub stroke_width: f32,
-    pub z: f32,
     pub visibility: Visibility,
     pub color: &'static str,
     pub tag: T,
@@ -82,7 +85,6 @@ where
             start: Vec2::ZERO,
             end: Vec2::ZERO,
             stroke_width: 1.0,
-            z: 1.0,
             visibility: Visibility::Visible,
             color: "#ffffff",
             tag: T::default(),
@@ -101,13 +103,14 @@ where
             ShapeBundle {
                 path: builder.build(),
                 spatial: SpatialBundle {
-                    transform: Transform::from_translation(Vec3::new(0.0, 0.0, self.z)),
+                    transform: Transform::from_translation(Vec3::new(0.0, 0.0, CAMERA_Z_VFX)),
                     visibility: self.visibility,
                     ..Default::default()
                 },
                 ..Default::default()
             },
             Stroke::new(Color::hex(self.color).unwrap(), self.stroke_width),
+            RenderLayers::layer(CAMERA_LAYER),
             NoFrustumCulling,
             self.tag,
         ));
