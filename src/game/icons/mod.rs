@@ -61,7 +61,7 @@ impl Plugin for IconPlugin {
                 fix_free_items_in_dropzone,
             )
                 .chain()
-                .run_if(in_state(GameState::GameRunning)),
+                .run_if(in_state(GameState::GameRunning).or_else(in_state(GameState::MainMenu))),
         );
     }
 }
@@ -223,7 +223,7 @@ fn init_icons_system(
 
     commands.insert_resource(SpatialIndexResource(spatial_index));
 
-    state.set(GameState::GameRunning);
+    state.set(GameState::MainMenu);
 }
 
 fn update_icon_instance_data(

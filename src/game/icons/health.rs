@@ -9,7 +9,7 @@ use super::{
     components::IconTransform, resources::SpatialIndexResource, IconPlayerController, ICON_SIZE,
 };
 
-pub const TOTAL_HEALTH: i32 = 1000;
+pub const TOTAL_HEALTH: i32 = 100;
 
 #[derive(Resource, Debug)]
 pub struct PlayerHealth {
@@ -64,6 +64,7 @@ fn damage_player_system(
     mut health: ResMut<PlayerHealth>,
     boundaries: Res<WorldBoundaryResource>,
     mut events: EventWriter<PlayerDamageEvent>,
+    mut state: ResMut<NextState<GameState>>,
 ) {
     let player_transform = player.single();
 
@@ -80,7 +81,7 @@ fn damage_player_system(
 
     for result in index.0.query(player_transform.position, ICON_SIZE) {
         let icon_type = icon_types.get(result.key).unwrap();
-        if icon_type.0 != Type::Player {
+        if icon_type.0 == Type::Free || icon_type.0 == Type::Follower {
             // player damage!
             let damage = settings.player_damage_amount;
 
@@ -88,6 +89,10 @@ fn damage_player_system(
 
             info!("Health: {}", health.health);
             events.send(PlayerDamageEvent { amount: damage });
+
+            if health.health <= 0 {
+                state.set(GameState::GameOver);
+            }
 
             // set cooldown timer:
             cooldown.timer = Some(Timer::from_seconds(

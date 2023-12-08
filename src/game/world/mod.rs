@@ -53,7 +53,6 @@ impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(WorldBoundaryResource::default());
         app.add_plugins(ShapePlugin);
-        // app.add_systems(OnEnter(GameState::GameLoading), setup_world_grid);
         app.add_systems(OnEnter(GameState::GameLoading), setup_world_grid);
     }
 }

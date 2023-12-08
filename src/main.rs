@@ -2,7 +2,7 @@ use bevy::{
     app::{App, PluginGroup},
     asset::AssetMetaCheck,
     log::LogPlugin,
-    window::{PresentMode, Window, WindowPlugin},
+    window::{PresentMode, Window, WindowPlugin, WindowResolution},
     DefaultPlugins,
 };
 mod game;
@@ -21,6 +21,7 @@ fn main() {
                     present_mode: PresentMode::AutoVsync,
                     fit_canvas_to_parent: true,
                     resizable: true,
+                    resolution: WindowResolution::new(1200.0, 1200.0),
                     ..Default::default()
                 }),
                 ..Default::default()

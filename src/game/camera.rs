@@ -1,9 +1,8 @@
 use bevy::core_pipeline::clear_color::ClearColorConfig;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
-use bevy::render::camera::CameraOutputMode;
-use bevy::render::render_resource::{BlendState, LoadOp};
 use bevy::render::view::RenderLayers;
+use bevy::window::WindowResized;
 
 use super::icons::{IconPlayerController, IconTransform};
 use super::states::GameState;
@@ -21,7 +20,14 @@ pub struct CameraPlugin;
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup_cameras);
-        app.add_systems(OnEnter(GameState::GameRunning), make_camera_visible);
+        app.add_systems(OnEnter(GameState::MainMenu), make_camera_visible);
+        app.add_systems(OnEnter(GameState::GameRunning), enter_game_running_system);
+
+        app.add_systems(
+            Update,
+            resize_menu_camera.run_if(in_state(GameState::MainMenu)),
+        );
+
         app.add_systems(
             Update,
             (camera_zoom_system, camera_follow_player_icon_system)
@@ -53,15 +59,11 @@ fn setup_cameras(mut commands: Commands) {
     commands.spawn((
         Camera2dBundle {
             camera_2d: Camera2d {
-                clear_color: ClearColorConfig::Custom(Color::rgba(0.0, 0.0, 0.0, 0.0)),
+                clear_color: ClearColorConfig::None, // ::Custom(Color::rgba(0.0, 0.0, 0.0, 0.0)),
             },
             camera: Camera {
                 order: 1,
                 is_active: true,
-                output_mode: CameraOutputMode::Write {
-                    blend_state: Some(BlendState::ALPHA_BLENDING),
-                    color_attachment_load_op: LoadOp::Load,
-                },
                 ..Default::default()
             },
             ..Default::default()
@@ -71,8 +73,44 @@ fn setup_cameras(mut commands: Commands) {
     ));
 }
 
-fn make_camera_visible(mut query: Query<&mut Camera, With<CameraTag>>) {
-    query.single_mut().is_active = true;
+fn make_camera_visible(
+    mut query: Query<(&mut Camera, &mut OrthographicProjection), With<CameraTag>>,
+    window: Query<&Window>,
+    boundaries: Res<WorldBoundaryResource>,
+) {
+    let window = window.single();
+
+    let world_size = boundaries.size();
+    let max_scale = (world_size.x / window.width()).max(world_size.y / window.height());
+
+    let (mut camera, mut projection) = query.single_mut();
+
+    camera.is_active = true;
+    projection.scale = max_scale;
+}
+
+fn enter_game_running_system(mut query: Query<&mut OrthographicProjection, With<CameraTag>>) {
+    let mut projection = query.single_mut();
+    projection.scale = 1.0;
+}
+
+fn resize_menu_camera(
+    mut query: Query<(&mut Camera, &mut OrthographicProjection), With<CameraTag>>,
+    window: Query<&Window>,
+    boundaries: Res<WorldBoundaryResource>,
+    mut resize_reader: EventReader<WindowResized>,
+) {
+    for _ in resize_reader.read() {
+        let window = window.single();
+
+        let world_size = boundaries.size();
+        let max_scale = (world_size.x / window.width()).max(world_size.y / window.height());
+
+        let (mut camera, mut projection) = query.single_mut();
+
+        camera.is_active = true;
+        projection.scale = max_scale;
+    }
 }
 
 fn camera_zoom_system(
@@ -95,8 +133,6 @@ fn camera_zoom_system(
                 0.0
             };
 
-            // info!("scale: event.y = {:?}", event_y);
-
             projection.scale += (event_y * SCALE_FACTOR) * -1.0;
 
             let world_size = boundaries.size();
@@ -108,14 +144,6 @@ fn camera_zoom_system(
             if projection.scale > max_scale {
                 projection.scale = max_scale;
             }
-
-            // info!(
-            //     "projection.scale = {:?} max_scale = {:?} window = {:?}x{:?}",
-            //     projection.scale,
-            //     max_scale,
-            //     window.width(),
-            //     window.height()
-            // );
         }
     }
 }

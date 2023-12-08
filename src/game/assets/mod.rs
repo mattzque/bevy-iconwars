@@ -38,6 +38,7 @@ fn load_assets_system(
 ) {
     let font_title: Handle<Font> = server.load("fonts/GasoekOne-Regular.ttf");
     let font_text: Handle<Font> = server.load("fonts/DMSans-Black.ttf");
+    let font_text2: Handle<Font> = server.load("fonts/DMSans-Regular.ttf");
     let icons: Handle<IconSheetAsset> = server.load("icons.icon.json");
     commands.insert_resource(IconSheetResource {
         handle: icons.clone(),
@@ -46,11 +47,13 @@ fn load_assets_system(
     commands.insert_resource(FontResource {
         title: font_title.clone(),
         text: font_text.clone(),
+        text2: font_text2.clone(),
     });
     commands.insert_resource(PendingAssets(HashSet::from_iter(vec![
         icons.untyped(),
         font_title.untyped(),
         font_text.untyped(),
+        font_text2.untyped(),
     ])));
     state.set(GameState::AssetsLoading);
 }

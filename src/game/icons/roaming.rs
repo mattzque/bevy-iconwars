@@ -22,7 +22,8 @@ impl Plugin for IconRoamingPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            update_icon_roaming_velocity.run_if(in_state(GameState::GameRunning)),
+            update_icon_roaming_velocity
+                .run_if(in_state(GameState::GameRunning).or_else(in_state(GameState::MainMenu))),
         );
     }
 }

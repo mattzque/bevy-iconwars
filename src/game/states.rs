@@ -11,6 +11,12 @@ pub enum GameState {
     AssetsLoaded,
     /// Game is initializing
     GameLoading,
+
+    MainMenu,
+
     /// Game is running
     GameRunning,
+
+    /// Player died or won
+    GameOver,
 }
