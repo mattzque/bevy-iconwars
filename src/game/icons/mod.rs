@@ -25,6 +25,7 @@ mod capture;
 pub mod commands;
 mod components;
 mod controller;
+pub mod health;
 mod renderer;
 mod resources;
 mod roaming;
@@ -49,6 +50,7 @@ impl Plugin for IconPlugin {
             roaming::IconRoamingPlugin,
             controller::IconPlayerControllerPlugin,
             capture::IconCapturePlugin,
+            health::PlayerHealthPlugin,
         ));
         app.add_systems(OnEnter(GameState::GameLoading), init_icons_system);
         app.add_systems(
@@ -97,6 +99,7 @@ fn init_icons_system(
     let mut count = 0;
 
     let mut player_position = Vec2::ZERO;
+    let mut player_ = false;
 
     let mut spatial_index = spatial::SpatialIndex::new(*bounds_min, *bounds_max, SPATIAL_GRID_SIZE);
 
@@ -110,7 +113,7 @@ fn init_icons_system(
             .for_each(|(icon_index, icon)| {
                 loop {
                     // candidate:
-                    let position = random_position_in_bounds(&mut rng, &boundaries);
+                    let mut position = random_position_in_bounds(&mut rng, &boundaries);
 
                     // search for collisions:
                     let mut collision = false;
@@ -126,12 +129,17 @@ fn init_icons_system(
                         continue;
                     }
 
+                    let mut rotation = (rng.gen_range(0.0..360.0) as f32).to_radians();
+
+                    // let is_player = icon_index == 0 && !player_; //
                     let is_player = icon.name == "rust";
                     if is_player {
+                        player_ = true;
+                        position = Vec2::ZERO;
+                        rotation = 0.0;
                         player_position = position;
                     }
 
-                    let rotation = (rng.gen_range(0.0..360.0) as f32).to_radians();
                     let initial_speed = 1.0;
                     let velocity = if is_player {
                         Vec2::ZERO

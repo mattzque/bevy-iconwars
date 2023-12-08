@@ -2,6 +2,7 @@ use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy::{ecs::system::Command, render::view::RenderLayers};
 
+use super::icons::health::{PlayerHealth, TOTAL_HEALTH};
 use super::icons::{IconType, Type};
 use super::{camera::CAMERA_LAYER_UI, settings::SettingsResource, states::GameState};
 
@@ -71,14 +72,23 @@ impl Command for FollowScreen {
 #[derive(Component)]
 pub struct ScoreScreenTag;
 
+#[derive(Component)]
+pub struct HealthBarTag;
+
 pub struct ScoreScreen {
     pub score: u32,
-    pub total: u32,
+    pub score_total: u32,
+    pub health: i32,
+    pub health_total: i32,
 }
 
 impl ScoreScreen {
     pub fn score_line(&self) -> String {
-        format!("{} / {}", self.score, self.total)
+        format!("{} / {}", self.score, self.score_total)
+    }
+
+    pub fn health_percent(&self) -> f32 {
+        (self.health as f32 / self.health_total as f32) * 100.0
     }
 }
 
@@ -98,6 +108,12 @@ impl Command for ScoreScreen {
                     .get_single_mut(world)
                 {
                     text.sections[0].value = contents;
+                    if let Ok(mut style) = world
+                        .query_filtered::<&mut Style, With<HealthBarTag>>()
+                        .get_single_mut(world)
+                    {
+                        style.width = Val::Percent(self.health_percent());
+                    }
                 } else {
                     world
                         .spawn((
@@ -105,6 +121,7 @@ impl Command for ScoreScreen {
                                 style: Style {
                                     width: Val::Vw(100.0),
                                     height: Val::Vh(100.0),
+                                    position_type: PositionType::Relative,
                                     justify_content: JustifyContent::FlexStart,
                                     align_items: AlignItems::FlexStart,
                                     ..Default::default()
@@ -113,8 +130,43 @@ impl Command for ScoreScreen {
                             },
                             RenderLayers::layer(CAMERA_LAYER_UI),
                         ))
-                        .with_children(|child| {
-                            child
+                        .with_children(|parent| {
+                            // health bar
+                            parent
+                                .spawn((
+                                    NodeBundle {
+                                        style: Style {
+                                            width: Val::Vw(40.0),
+                                            max_width: Val::Px(400.0),
+                                            height: Val::Px(32.0),
+                                            padding: UiRect::all(Val::Px(6.0)),
+                                            position_type: PositionType::Absolute,
+                                            bottom: Val::Px(64.0),
+                                            left: Val::Px(32.0),
+                                            ..Default::default()
+                                        },
+                                        background_color: Color::hex("#2d333b").unwrap().into(),
+                                        ..Default::default()
+                                    },
+                                    RenderLayers::layer(CAMERA_LAYER_UI),
+                                ))
+                                .with_children(|parent| {
+                                    parent.spawn((
+                                        NodeBundle {
+                                            style: Style {
+                                                width: Val::Percent(self.health_percent()),
+                                                height: Val::Percent(100.0),
+                                                ..Default::default()
+                                            },
+                                            background_color: Color::hex("#56837f").unwrap().into(),
+                                            ..Default::default()
+                                        },
+                                        RenderLayers::layer(CAMERA_LAYER_UI),
+                                        HealthBarTag,
+                                    ));
+                                });
+
+                            parent
                                 .spawn((
                                     NodeBundle {
                                         style: Style {
@@ -131,8 +183,8 @@ impl Command for ScoreScreen {
                                     },
                                     RenderLayers::layer(CAMERA_LAYER_UI),
                                 ))
-                                .with_children(|child| {
-                                    child.spawn((
+                                .with_children(|parent| {
+                                    parent.spawn((
                                         TextBundle::from_section(
                                             contents,
                                             TextStyle {
@@ -366,16 +418,14 @@ impl Plugin for HudPlugin {
     }
 }
 
-pub fn init_hud(mut commands: Commands, mut _settings: ResMut<SettingsResource>) {
+pub fn init_hud(
+    mut commands: Commands,
+    mut _settings: ResMut<SettingsResource>,
+    health: ResMut<PlayerHealth>,
+    items: Query<&IconType>,
+) {
     // commands.add(FollowScreen { text: "RUST IS NOW FOLLOWING YOU".to_string() });
     // commands.add(TitleScreen {});
-    commands.add(ScoreScreen {
-        score: 42,
-        total: 1200,
-    });
-}
-
-pub fn update_hud(mut commands: Commands, items: Query<&IconType>) {
     let mut score = 0;
     let mut total = 0;
     items.for_each(|icon_type| {
@@ -389,5 +439,32 @@ pub fn update_hud(mut commands: Commands, items: Query<&IconType>) {
 
         total += 1;
     });
-    commands.add(ScoreScreen { score, total });
+    commands.add(ScoreScreen {
+        score,
+        score_total: total,
+        health: health.health,
+        health_total: TOTAL_HEALTH,
+    });
+}
+
+pub fn update_hud(mut commands: Commands, items: Query<&IconType>, health: ResMut<PlayerHealth>) {
+    let mut score = 0;
+    let mut total = 0;
+    items.for_each(|icon_type| {
+        if icon_type.0 == Type::Player {
+            return;
+        }
+
+        if icon_type.0 == Type::Captured {
+            score += 1;
+        }
+
+        total += 1;
+    });
+    commands.add(ScoreScreen {
+        score,
+        score_total: total,
+        health: health.health,
+        health_total: TOTAL_HEALTH,
+    });
 }

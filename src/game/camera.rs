@@ -7,6 +7,7 @@ use bevy::render::view::RenderLayers;
 
 use super::icons::{IconPlayerController, IconTransform};
 use super::states::GameState;
+use super::world::WorldBoundaryResource;
 
 pub const CAMERA_LAYER: u8 = 1;
 pub const CAMERA_LAYER_UI: u8 = 2;
@@ -76,16 +77,45 @@ fn make_camera_visible(mut query: Query<&mut Camera, With<CameraTag>>) {
 
 fn camera_zoom_system(
     mut query: Query<&mut OrthographicProjection, With<Camera>>,
+    window: Query<&Window>,
     mut scroll_events: EventReader<MouseWheel>,
+    boundaries: Res<WorldBoundaryResource>,
 ) {
     for event in scroll_events.read() {
         for mut projection in query.iter_mut() {
-            #[cfg(not(target_arch = "wasm32"))]
-            const SCALE_FACTOR: f32 = 10.0;
-            #[cfg(target_arch = "wasm32")]
-            const SCALE_FACTOR: f32 = 1000.0;
+            let window = window.single();
 
-            projection.scale *= (1.0 + event.y / SCALE_FACTOR) * -1.0;
+            const SCALE_FACTOR: f32 = 0.3;
+
+            let event_y = if event.y > 0.0 {
+                1.0
+            } else if event.y < 0.0 {
+                -1.0
+            } else {
+                0.0
+            };
+
+            // info!("scale: event.y = {:?}", event_y);
+
+            projection.scale += (event_y * SCALE_FACTOR) * -1.0;
+
+            let world_size = boundaries.size();
+            let max_scale = (world_size.x / window.width()).max(world_size.y / window.height());
+
+            if projection.scale < 1.0 {
+                projection.scale = 1.0;
+            }
+            if projection.scale > max_scale {
+                projection.scale = max_scale;
+            }
+
+            // info!(
+            //     "projection.scale = {:?} max_scale = {:?} window = {:?}x{:?}",
+            //     projection.scale,
+            //     max_scale,
+            //     window.width(),
+            //     window.height()
+            // );
         }
     }
 }

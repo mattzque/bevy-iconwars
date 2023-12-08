@@ -1,30 +1,16 @@
 use bevy::prelude::*;
 use bevy::utils::HashSet;
-use bevy::{utils::Instant, window::PrimaryWindow};
 use bevy_prototype_lyon::prelude::*;
 
-use crate::game::camera::CameraTag;
 use crate::game::world::WorldBoundaryResource;
 use crate::game::{settings::SettingsResource, states::GameState};
 
 use super::commands::{CircleShapeCommand, LineShapeCommand};
-use super::components::{
-    IconCaptureProgressLine, IconFollowerCircle, IconFollowerLine, IconType, Type,
-};
-use super::resources::HoveredIcon;
+use super::components::{IconFollowerCircle, IconFollowerLine, IconType, Type};
 use super::ICON_CIRCLE_RADIUS;
 use super::{
-    components::{IconHoveredCircle, IconTransform},
-    resources::SpatialIndexResource,
-    IconPlayerController, ICON_SIZE,
+    components::IconTransform, resources::SpatialIndexResource, IconPlayerController, ICON_SIZE,
 };
-
-#[derive(Resource, Debug, Default)]
-struct IconCaptureProgress {
-    pub entity: Option<Entity>,
-    pub progress: f32,
-    pub start: Option<Instant>,
-}
 
 #[derive(Resource, Debug, Default)]
 struct IconCapturedGrid {
@@ -74,18 +60,14 @@ pub struct IconCapturePlugin;
 
 impl Plugin for IconCapturePlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(IconCaptureProgress::default());
         app.insert_resource(IconCapturedGrid::default());
+        app.insert_resource(ProjectileCooldown::default());
         app.insert_resource(IconFollowers::default());
-        app.add_systems(OnEnter(GameState::GameLoading), init_capture);
         app.add_systems(
             Update,
             (
-                update_hovered_icon_system,
-                start_capture_on_mouse_down,
-                stop_capture_on_mouse_leave,
-                progress_capture_timer,
-                update_capture_progress_line,
+                spawn_projectile_system,
+                update_projectiles_system,
                 update_follower_paths,
                 player_follower_dropzone,
             )
@@ -94,135 +76,123 @@ impl Plugin for IconCapturePlugin {
     }
 }
 
-fn init_capture(mut commands: Commands) {
-    commands.add(CircleShapeCommand::<IconHoveredCircle> {
-        radius: ICON_CIRCLE_RADIUS,
-        color: "#884c56",
-        stroke_width: 4.0,
-        visibility: Visibility::Visible,
-        ..Default::default()
-    });
-    commands.add(LineShapeCommand::<IconCaptureProgressLine> {
-        color: "#884c56",
-        stroke_width: 4.0,
-        visibility: Visibility::Visible,
-        ..Default::default()
-    });
+#[derive(Component, Debug, Default)]
+pub struct Projectile {
+    pub start: Vec2,    // despawn after a certain distance
+    pub velocity: Vec2, // indicates direction and speed
+}
+
+#[derive(Resource, Default)]
+pub struct ProjectileCooldown {
+    pub timer: Option<Timer>,
 }
 
 #[allow(clippy::too_many_arguments)]
-fn update_hovered_icon_system(
+fn spawn_projectile_system(
     mut commands: Commands,
-    boundaries: Res<WorldBoundaryResource>,
-    window: Query<&Window, With<PrimaryWindow>>,
-    camera: Query<(&Camera, &GlobalTransform), With<CameraTag>>,
-    index: Res<SpatialIndexResource>,
-    player: Query<(Entity, &IconTransform), With<IconPlayerController>>,
-    icon_types: Query<&IconType, Without<IconPlayerController>>,
-    mut hovered_circle: Query<(&mut Visibility, &mut Transform), With<IconHoveredCircle>>,
-    settings: Res<SettingsResource>,
-) {
-    let (camera, camera_transform) = camera.single();
-    let window = window.single();
-    let (_player, player_transform) = player.single();
-    // player cant hover items while she is in the drop zone!
-    if boundaries.in_dropzone(player_transform.position) {
-        commands.insert_resource(HoveredIcon(None));
-        let (mut visibility, _) = hovered_circle.single_mut();
-        *visibility = Visibility::Hidden;
-        return;
-    }
-
-    if let Some(world_position) = window
-        .cursor_position()
-        .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
-        .map(|ray| ray.origin.truncate())
-    {
-        commands.insert_resource(HoveredIcon(None));
-        let (mut visibility, _) = hovered_circle.single_mut();
-        *visibility = Visibility::Hidden;
-
-        let threshold = 16.0;
-        if let Some(result) = index
-            .0
-            .query(world_position, ICON_SIZE / 2.0 + threshold)
-            .next()
-        {
-            let distance_to_player = player_transform.position.distance(*result.position);
-            let icon_type = icon_types
-                .get(result.key)
-                .map(|result| result.0)
-                .unwrap_or(Type::Player);
-
-            // do not set hover on icons that are one of:
-            //  - is not a free moving icon
-            //  - too far away from the player
-            if icon_type != Type::Free || distance_to_player > settings.max_hover_distance {
-                return;
-            }
-            println!("hovering: {:?}", result);
-
-            commands.insert_resource(HoveredIcon(Some(result.key)));
-            let (mut visibility, mut transform) = hovered_circle.single_mut();
-            transform.translation.x = result.position.x;
-            transform.translation.y = result.position.y;
-            *visibility = Visibility::Visible;
-        }
-    }
-}
-
-fn start_capture_on_mouse_down(
+    player: Query<&IconTransform, With<IconPlayerController>>,
+    followers: Res<IconFollowers>,
+    keys: Res<Input<KeyCode>>,
     mouse_button_input: Res<Input<MouseButton>>,
-    hovered_icon: Res<HoveredIcon>,
-    mut capture_progress: ResMut<IconCaptureProgress>,
-) {
-    if mouse_button_input.just_pressed(MouseButton::Left) {
-        if let Some(hovered_icon) = hovered_icon.0 {
-            // if the icon is already capturing do nothing (perhaps increase progress? or show some visual pulse animation or something?)
-            if capture_progress.entity == Some(hovered_icon) {
-                return;
-            }
-
-            capture_progress.entity = Some(hovered_icon);
-            capture_progress.progress = 0.0;
-            capture_progress.start = Some(Instant::now());
-        }
-    }
-}
-
-fn stop_capture_on_mouse_leave(
-    hovered_icon: Res<HoveredIcon>,
-    mut capture_progress: ResMut<IconCaptureProgress>,
-) {
-    if let Some(entity) = capture_progress.entity {
-        if let Some(hovered) = hovered_icon.0 {
-            if hovered != entity {
-                capture_progress.entity = None;
-            }
-        } else {
-            capture_progress.entity = None;
-        }
-    }
-}
-
-fn progress_capture_timer(
-    mut capture_progress: ResMut<IconCaptureProgress>,
     settings: Res<SettingsResource>,
-    mut followers: ResMut<IconFollowers>,
-    mut icons: Query<&mut IconType>,
-    mut hovered_icon: ResMut<HoveredIcon>,
+    boundaries: Res<WorldBoundaryResource>,
+    time: Res<Time>,
+    mut cooldown: ResMut<ProjectileCooldown>,
 ) {
-    if let Some(entity) = capture_progress.entity {
-        let now = Instant::now();
-        let duration = now.duration_since(capture_progress.start.unwrap());
-        let progress = duration.as_secs_f32() / settings.capture_time;
-        capture_progress.progress = progress;
+    let n_projectiles = 1 + followers.followers.len(); // cap it!
 
-        if progress > 1.0 {
-            followers.followers.insert(entity);
-            capture_progress.entity = None;
-            icons.get_mut(entity).unwrap().0 = Type::Follower;
-            hovered_icon.0 = None;
+    if let Some(timer) = cooldown.timer.as_mut() {
+        timer.tick(time.delta());
+        if !timer.finished() {
+            return;
+        }
+    }
+
+    if keys.just_pressed(KeyCode::Space) || mouse_button_input.just_pressed(MouseButton::Left) {
+        let player = player.single();
+
+        // no shooting in the dropzone!
+        if boundaries.in_dropzone(player.position) {
+            return;
+        }
+
+        cooldown.timer = Some(Timer::from_seconds(
+            settings.projectile_cooldown,
+            TimerMode::Once,
+        ));
+
+        let spread = 45.0_f32.to_radians();
+        let half_spread = spread / 2.0;
+        let step = spread / n_projectiles as f32;
+
+        for i in 0..n_projectiles {
+            let rotation = (i as f32) * step - half_spread;
+
+            // TODO FIXME wrong buggy
+            let rotation = (player.rotation + std::f32::consts::PI / 2.0) + rotation + half_spread;
+
+            let direction = Vec2::new(rotation.cos(), rotation.sin());
+            let start = player.position + direction * ICON_CIRCLE_RADIUS;
+
+            commands.add(CircleShapeCommand {
+                radius: 8.0,
+                position: start,
+                stroke_width: 1.0,
+                color: "#7fc1bb",
+                fill_color: Some("#7fc1bb"),
+                tag: Projectile {
+                    start,
+                    velocity: direction * settings.projectile_speed,
+                },
+                ..Default::default()
+            });
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn update_projectiles_system(
+    mut commands: Commands,
+    mut projectiles: Query<(Entity, &mut Transform, &Projectile)>,
+    mut icons: Query<&mut IconType>,
+    index: Res<SpatialIndexResource>,
+    time: Res<Time>,
+    settings: Res<SettingsResource>,
+    boundaries: Res<WorldBoundaryResource>,
+    mut followers: ResMut<IconFollowers>,
+) {
+    let dt = time.delta_seconds();
+    for (entity, mut transform, Projectile { start, velocity }) in projectiles.iter_mut() {
+        transform.translation += Vec3::new(velocity.x, velocity.y, 0.0) * dt;
+        let position = Vec2::new(transform.translation.x, transform.translation.y);
+
+        // despawn in dropzone
+        if boundaries.in_dropzone(position) {
+            commands.entity(entity).despawn();
+            continue;
+        }
+
+        let distance = transform
+            .translation
+            .distance(Vec3::new(start.x, start.y, 0.0));
+        if distance >= settings.projectile_despawn_distance {
+            commands.entity(entity).despawn();
+            continue;
+        }
+
+        // find something that intersects with the projectile:
+        for result in index.0.query(position, ICON_SIZE / 2.0) {
+            let mut icon_type = icons.get_mut(result.key).unwrap();
+            if icon_type.0 == Type::Free {
+                // icon becomes a follower!
+                followers.followers.insert(result.key);
+
+                // despawn projectile:
+                commands.entity(entity).despawn();
+
+                icon_type.0 = Type::Follower;
+                break;
+            }
         }
     }
 }
@@ -236,29 +206,6 @@ fn get_line_points(start: Vec2, end: Vec2) -> (Vec2, Vec2) {
     end -= direction * ICON_CIRCLE_RADIUS;
 
     (start, end)
-}
-
-// draw line from player to icon that is being captured
-fn update_capture_progress_line(
-    mut line: Query<(&mut Path, &mut Visibility), With<IconCaptureProgressLine>>,
-    capture_progress: Res<IconCaptureProgress>,
-    player: Query<&IconTransform, With<IconPlayerController>>,
-    query: Query<&IconTransform>,
-) {
-    let mut line = line.single_mut();
-    if let Some(entity) = capture_progress.entity {
-        let player_transform = player.single();
-        let transform = query.get(entity).unwrap();
-
-        let (start, end) = get_line_points(player_transform.position, transform.position);
-
-        let mut builder = GeometryBuilder::new();
-        builder = builder.add(&shapes::Line(start, end));
-        *line.0 = builder.build();
-        *line.1 = Visibility::Visible;
-    } else {
-        *line.1 = Visibility::Hidden;
-    }
 }
 
 fn update_follower_paths(
@@ -316,6 +263,7 @@ fn update_follower_paths(
                 radius: ICON_CIRCLE_RADIUS,
                 position: transform.position,
                 color: "#884c56",
+                fill_color: None,
                 stroke_width: 4.0,
                 visibility: Visibility::Visible,
                 tag: IconFollowerCircle(*follower),

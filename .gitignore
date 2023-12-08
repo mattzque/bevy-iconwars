@@ -2,3 +2,6 @@
 user
 *.blend1
 test_*.png
+wasm/bevy_game.js
+wasm/bevy_game_bg.wasm
+wasm/assets

@@ -41,6 +41,10 @@ impl WorldBoundaryResource {
             && point.y >= self.dropzone_min.y
             && point.y <= self.dropzone_max.y
     }
+
+    pub fn size(&self) -> Vec2 {
+        self.bounds_max - self.bounds_min
+    }
 }
 
 pub struct WorldPlugin;

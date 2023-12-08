@@ -50,6 +50,24 @@ pub fn render_settings_gui(mut settings: ResMut<SettingsResource>, mut contexts:
             egui::Slider::new(&mut settings.cohesion_distance, 5.0..=150.0)
                 .text("Cohesion Distance (px)"),
         );
+
+        ui.add(
+            egui::Slider::new(&mut settings.player_avoidance_distance, 5.0..=150.0)
+                .text("Player Avoidance Distance (px)"),
+        );
+        ui.add(
+            egui::Slider::new(&mut settings.player_avoidance_weight, 0.0..=10.0)
+                .text("Player Avoidance Weight"),
+        );
+        ui.add(
+            egui::Slider::new(&mut settings.player_avoidance_max_speed, 0.0..=2.0)
+                .text("Player Avoidance: Max Speed"),
+        );
+        ui.add(
+            egui::Slider::new(&mut settings.player_avoidance_max_force, 0.0..=2.0)
+                .text("Player Avoidance: Max Force"),
+        );
+
         ui.add(
             egui::Slider::new(&mut settings.separation_weight, 0.0..=10.0)
                 .text("Separation Weight"),
@@ -97,6 +115,28 @@ pub fn render_settings_gui(mut settings: ResMut<SettingsResource>, mut contexts:
         ui.add(
             egui::Slider::new(&mut settings.capture_time, 0.0..=10.0)
                 .text("Time to Capture (secs)"),
+        );
+
+        ui.add(
+            egui::Slider::new(&mut settings.projectile_speed, 0.0..=8000.0)
+                .text("Projectile: Speed"),
+        );
+        ui.add(
+            egui::Slider::new(&mut settings.projectile_despawn_distance, 0.0..=8000.0)
+                .text("Projectile: Despawn Distance"),
+        );
+        ui.add(
+            egui::Slider::new(&mut settings.projectile_cooldown, 0.0..=1.0)
+                .text("Projectile: Cooldown (secs)"),
+        );
+
+        ui.add(
+            egui::Slider::new(&mut settings.player_damage_amount, 0..=8000)
+                .text("Player: Damage Amount"),
+        );
+        ui.add(
+            egui::Slider::new(&mut settings.player_damage_cooldown, 0.0..=1.0)
+                .text("Player: Damage Cooldown (secs)"),
         );
     });
 }

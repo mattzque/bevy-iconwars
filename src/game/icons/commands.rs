@@ -14,6 +14,7 @@ pub struct CircleShapeCommand<T> {
     pub stroke_width: f32,
     pub visibility: Visibility,
     pub color: &'static str,
+    pub fill_color: Option<&'static str>,
     pub tag: T,
 }
 
@@ -28,6 +29,7 @@ where
             stroke_width: 1.0,
             visibility: Visibility::Visible,
             color: "#ffffff",
+            fill_color: None,
             tag: T::default(),
         }
     }
@@ -59,6 +61,11 @@ where
                 ..Default::default()
             },
             Stroke::new(Color::hex(self.color).unwrap(), self.stroke_width),
+            Fill::color(
+                self.fill_color
+                    .map(|color| Color::hex(color).unwrap())
+                    .unwrap_or(Color::rgba(0.0, 0.0, 0.0, 0.0)),
+            ),
             RenderLayers::layer(CAMERA_LAYER),
             self.tag,
             NoAutomaticBatching,

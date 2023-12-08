@@ -271,6 +271,23 @@ fn get_icon_velocity(
         max_force,
     );
 
+    let mut player_avoidance_force = Vec2::ZERO;
+    if icon_type.0 != Type::Follower {
+        // let force = get_seek_force(*position, *velocity, *target_position, max_speed, max_force);
+        let mut desired = *target_position - *position;
+        if desired == Vec2::ZERO {
+            return Vec2::ZERO;
+        }
+        if desired.length() < settings.player_avoidance_distance {
+            desired = desired.normalize();
+            desired *= -1.0; // reverse?
+            desired *= settings.player_avoidance_max_speed;
+            desired -= *velocity;
+            desired = limit_vec2(desired, settings.player_avoidance_max_force);
+            player_avoidance_force = desired;
+        }
+    }
+
     // println!("collision_force: {:?}", collision_force);
     // println!("separation_force: {:?}", separation_force);
 
@@ -278,6 +295,7 @@ fn get_icon_velocity(
     acceleration += alignment_force * settings.alignment_weight;
     acceleration += cohesion_force * settings.cohesion_weight;
     acceleration += collision_force * settings.collision_weight;
+    acceleration += player_avoidance_force * settings.player_avoidance_weight;
 
     if icon_type.0 == Type::Follower {
         let force = get_seek_force(*position, *velocity, *target_position, max_speed, max_force);

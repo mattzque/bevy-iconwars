@@ -1,6 +1,7 @@
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 
-use crate::game::{settings::SettingsResource, states::GameState};
+use crate::game::{camera::CameraTag, settings::SettingsResource, states::GameState};
 
 use super::{
     components::{IconTransform, IconVelocity},
@@ -12,8 +13,8 @@ pub struct IconPlayerControllerPlugin;
 impl Plugin for IconPlayerControllerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            PreUpdate,
-            update_key_input.run_if(in_state(GameState::GameRunning)),
+            Update,
+            (update_key_input, update_player_rotation).run_if(in_state(GameState::GameRunning)),
         );
     }
 }
@@ -27,6 +28,29 @@ fn normalize_angle(mut angle: f32) -> f32 {
     angle
 }
 
+// player rotation by mouse position
+fn update_player_rotation(
+    window: Query<&Window, With<PrimaryWindow>>,
+    camera: Query<(&Camera, &GlobalTransform), With<CameraTag>>,
+    mut query: Query<&mut IconTransform, With<IconPlayerController>>,
+) {
+    let (camera, camera_transform) = camera.single();
+    let window = window.single();
+    if let Some(world_position) = window
+        .cursor_position()
+        .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+        .map(|ray| ray.origin.truncate())
+    {
+        if let Ok(mut transform) = query.get_single_mut() {
+            let delta = world_position - transform.position.trunc();
+            let rotation = delta.y.atan2(delta.x);
+            let r = std::f32::consts::PI / 2.0;
+            let rotation = normalize_angle(rotation - r);
+            transform.rotation = rotation;
+        }
+    }
+}
+
 fn update_key_input(
     time: Res<Time>,
     mut query: Query<(Entity, &mut IconTransform, &mut IconVelocity), With<IconPlayerController>>,
@@ -34,26 +58,28 @@ fn update_key_input(
     settings: Res<SettingsResource>,
 ) {
     let dt = time.delta_seconds();
-    if let Ok((_entity, mut transform, mut velocity_)) = query.get_single_mut() {
-        let turn = if keys.any_pressed([KeyCode::Left, KeyCode::A]) {
-            // turn left
-            Some(1.0)
-        } else if keys.any_pressed([KeyCode::Right, KeyCode::D]) {
-            // turn right
-            Some(-1.0)
-        } else {
-            None
-        };
+    // info!("print dt = {:?}", dt);
+    if let Ok((_entity, transform, mut velocity_)) = query.get_single_mut() {
+        // let turn = if keys.any_pressed([KeyCode::Left, KeyCode::A]) {
+        //     // turn left
+        //     Some(1.0)
+        // } else if keys.any_pressed([KeyCode::Right, KeyCode::D]) {
+        //     // turn right
+        //     Some(-1.0)
+        // } else {
+        //     None
+        // };
 
-        if let Some(turn) = turn {
-            transform.rotation += turn * dt * settings.controller_turn_speed;
-            transform.rotation = normalize_angle(transform.rotation);
-        }
+        // if let Some(turn) = turn {
+        //     transform.rotation += turn * dt * settings.controller_turn_speed;
+        //     transform.rotation = normalize_angle(transform.rotation);
+        // }
 
         let rotation = transform.rotation;
 
         let r = std::f32::consts::PI / 2.0;
         let forward_vector = Vec2::new((rotation - r).cos(), (rotation - r).sin());
+        let strafe_vector = Vec2::new(rotation.cos(), rotation.sin());
 
         let mut accel = Vec2::ZERO;
         if keys.any_pressed([KeyCode::Up, KeyCode::W]) {
@@ -63,6 +89,14 @@ fn update_key_input(
         if keys.any_pressed([KeyCode::Down, KeyCode::S]) {
             // backward
             accel += forward_vector * 1.0;
+        }
+        if keys.any_pressed([KeyCode::Left, KeyCode::A]) {
+            // strafe left
+            accel += strafe_vector * -1.0;
+        }
+        if keys.any_pressed([KeyCode::Right, KeyCode::D]) {
+            // strafe right
+            accel += strafe_vector * 1.0;
         }
 
         // normalized and scaled by acceleration setting
@@ -97,6 +131,14 @@ fn update_key_input(
         } else {
             velocity + delta_friction
         };
+        // if velocity.length() > 0.0 {
+        //     info!(
+        //         "dt={:?} velocity={:?} l = {:?}",
+        //         dt,
+        //         velocity,
+        //         velocity.length()
+        //     );
+        // }
 
         velocity_.0 = velocity;
     }

@@ -19,6 +19,11 @@ pub struct SettingsResource {
     pub alignment_weight: f32,
     pub cohesion_weight: f32,
 
+    pub player_avoidance_distance: f32,
+    pub player_avoidance_weight: f32,
+    pub player_avoidance_max_speed: f32,
+    pub player_avoidance_max_force: f32,
+
     pub seek_weight: f32,
     pub seek_max_speed: f32,
     pub seek_max_force: f32,
@@ -30,6 +35,13 @@ pub struct SettingsResource {
 
     pub max_hover_distance: f32,
     pub capture_time: f32,
+
+    pub projectile_speed: f32,
+    pub projectile_despawn_distance: f32,
+    pub projectile_cooldown: f32,
+
+    pub player_damage_amount: i32,
+    pub player_damage_cooldown: f32,
 }
 
 impl Default for SettingsResource {
@@ -54,6 +66,11 @@ impl Default for SettingsResource {
             alignment_weight: 2.95,
             cohesion_weight: 0.3,
 
+            player_avoidance_distance: 128.0,
+            player_avoidance_weight: 5.1,
+            player_avoidance_max_speed: 1.2,
+            player_avoidance_max_force: 0.1,
+
             seek_weight: 7.0,
             seek_max_speed: 0.78,
             seek_max_force: 0.08,
@@ -66,6 +83,13 @@ impl Default for SettingsResource {
             max_hover_distance: 880.0,
 
             capture_time: 0.1,
+
+            projectile_speed: 800.0,
+            projectile_despawn_distance: 1024.0,
+            projectile_cooldown: 0.3,
+
+            player_damage_amount: 10,
+            player_damage_cooldown: 0.5,
         }
     }
 }
