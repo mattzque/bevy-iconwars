@@ -580,7 +580,6 @@ pub fn enter_game_running_system(
     mut _settings: ResMut<SettingsResource>,
     health: ResMut<PlayerHealth>,
     score: ResMut<PlayerScore>,
-    items: Query<&IconType>,
     screens: Query<Entity, With<ScreenTag>>,
 ) {
     for screen_entity in screens.iter() {
@@ -595,7 +594,6 @@ pub fn enter_game_running_system(
 
 pub fn update_hud_system(
     mut commands: Commands,
-    items: Query<&IconType>,
     health: ResMut<PlayerHealth>,
     score: ResMut<PlayerScore>,
 ) {

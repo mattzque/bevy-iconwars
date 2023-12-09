@@ -3,7 +3,6 @@ use bevy::render::batching::NoAutomaticBatching;
 use bevy::render::mesh::shape;
 use bevy::render::view::{NoFrustumCulling, RenderLayers};
 use bevy::sprite::Mesh2dHandle;
-use bevy::utils::Instant;
 use rand::prelude::*;
 
 use crate::game::camera::{CAMERA_LAYER, CAMERA_Z_ICONS};
@@ -84,7 +83,6 @@ fn init_icons_system(
     resource: Res<IconSheetResource>,
     assets: Res<Assets<IconSheetAsset>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut state: ResMut<NextState<GameState>>,
     boundaries: Res<WorldBoundaryResource>,
 
     player_circle: Query<Entity, With<IconPlayerCircle>>,
@@ -120,7 +118,6 @@ fn init_icons_system(
 
     let mut spatial_index = spatial::SpatialIndex::new(*bounds_min, *bounds_max, SPATIAL_GRID_SIZE);
 
-    let start = Instant::now();
     sheets.iter().enumerate().for_each(|(sheet_index, sheet)| {
         textures.push(sheet.handle.clone());
         sheet

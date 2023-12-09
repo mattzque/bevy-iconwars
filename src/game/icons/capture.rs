@@ -68,7 +68,7 @@ impl Plugin for IconCapturePlugin {
         app.insert_resource(IconCapturedGrid::default());
         app.insert_resource(ProjectileCooldown::default());
         app.insert_resource(IconFollowers::default());
-        app.add_systems(OnEnter(GameState::MainMenu), (reset_resources));
+        app.add_systems(OnEnter(GameState::MainMenu), reset_resources);
         app.add_systems(
             Update,
             (
