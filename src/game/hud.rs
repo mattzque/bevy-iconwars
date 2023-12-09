@@ -3,11 +3,82 @@ use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy::{ecs::system::Command, render::view::RenderLayers};
 
+use super::assets::PendingAssets;
 use super::audio::AudioSettingsResource;
 use super::icons::events::PlayerFollowEvent;
 use super::icons::health::{PlayerHealth, PlayerScore};
 use super::icons::{IconSheetRef, IconType, Type};
 use super::{camera::CAMERA_LAYER_UI, settings::SettingsResource, states::GameState};
+
+#[derive(Component)]
+pub struct LodingScreenTag;
+
+#[derive(Component)]
+pub struct LoadingBarTag;
+
+pub struct LoadingScreen {
+    pub progress: f32,
+}
+
+impl Command for LoadingScreen {
+    fn apply(self, world: &mut World) {
+        if let Ok(mut style) = world
+            .query_filtered::<&mut Style, With<LoadingBarTag>>()
+            .get_single_mut(world)
+        {
+            style.width = Val::Percent(self.progress);
+        } else {
+            world
+                .spawn((
+                    NodeBundle {
+                        style: Style {
+                            width: Val::Vw(100.0),
+                            height: Val::Vh(100.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                    LodingScreenTag,
+                    ScreenTag,
+                    RenderLayers::layer(CAMERA_LAYER_UI),
+                ))
+                .with_children(|parent| {
+                    parent
+                        .spawn((
+                            NodeBundle {
+                                style: Style {
+                                    width: Val::Vw(40.0),
+                                    max_width: Val::Px(400.0),
+                                    height: Val::Px(32.0),
+                                    padding: UiRect::all(Val::Px(6.0)),
+                                    ..Default::default()
+                                },
+                                background_color: Color::hex("#3c454f").unwrap().into(),
+                                ..Default::default()
+                            },
+                            RenderLayers::layer(CAMERA_LAYER_UI),
+                        ))
+                        .with_children(|parent| {
+                            parent.spawn((
+                                NodeBundle {
+                                    style: Style {
+                                        width: Val::Percent(self.progress),
+                                        height: Val::Percent(100.0),
+                                        ..Default::default()
+                                    },
+                                    background_color: Color::hex("#56837f").unwrap().into(),
+                                    ..Default::default()
+                                },
+                                RenderLayers::layer(CAMERA_LAYER_UI),
+                                LoadingBarTag,
+                            ));
+                        });
+                });
+        }
+    }
+}
 
 #[derive(Resource)]
 pub struct FontResource {
@@ -598,6 +669,10 @@ impl Plugin for HudPlugin {
         app.add_systems(OnEnter(GameState::GameOver), enter_game_over_system);
         app.add_systems(OnEnter(GameState::GameRunning), enter_game_running_system);
         app.add_systems(OnEnter(GameState::GamePaused), enter_game_paused_system);
+        app.add_systems(
+            Update,
+            update_assets_loading_system.run_if(in_state(GameState::AssetsLoading)),
+        );
 
         app.add_systems(
             Update,
@@ -620,6 +695,19 @@ impl Plugin for HudPlugin {
                 .run_if(in_state(GameState::GameRunning).or_else(in_state(GameState::GamePaused))),
         );
     }
+}
+
+pub fn update_assets_loading_system(
+    mut commands: Commands,
+    screens: Query<Entity, With<ScreenTag>>,
+    pending: Res<PendingAssets>,
+) {
+    for screen_entity in screens.iter() {
+        commands.entity(screen_entity).despawn_recursive();
+    }
+    commands.add(LoadingScreen {
+        progress: 100.0 - (pending.pending.len() as f32 / pending.n_total as f32) * 100.0,
+    });
 }
 
 pub fn enter_main_menu_system(mut commands: Commands, screens: Query<Entity, With<ScreenTag>>) {

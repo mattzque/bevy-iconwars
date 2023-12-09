@@ -30,7 +30,10 @@ impl Plugin for GameAssetPlugin {
 }
 
 #[derive(Resource, Debug)]
-pub struct PendingAssets(HashSet<UntypedHandle>);
+pub struct PendingAssets {
+    pub pending: HashSet<UntypedHandle>,
+    pub n_total: usize,
+}
 
 fn load_assets_system(
     mut commands: Commands,
@@ -81,7 +84,8 @@ fn load_assets_system(
         capture,
         damage,
     });
-    commands.insert_resource(PendingAssets(pending));
+    let n_total = pending.len();
+    commands.insert_resource(PendingAssets { pending, n_total });
     state.set(GameState::AssetsLoading);
 }
 
@@ -93,7 +97,7 @@ fn update_loading_system(
     let mut errors = Vec::new();
     // info!("pending.0 -> {:?}", pending);
 
-    pending.0.retain(|pending| {
+    pending.pending.retain(|pending| {
         let path = server.get_path(pending.id());
         // println!("path -> {:?}", path);
         let states = server.get_load_states(pending.id());
@@ -116,7 +120,7 @@ fn update_loading_system(
         error!("Error loading assets:\n{}", errors.join("\n"));
     }
 
-    if pending.0.is_empty() {
+    if pending.pending.is_empty() {
         state.set(GameState::AssetsLoaded);
     }
 }
