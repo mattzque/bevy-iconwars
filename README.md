@@ -1,13 +1,37 @@
 # Icon Wars
 
-My entry for Bevy Game Jam #4
+My entry for [Bevy Game Jam #4](https://itch.io/jam/bevy-jam-4)!
+
+This is my first ever game jam so I kept it really simple. It's
+mostly based around a simple boids simulation.
+
+![](screenshot.png)
+
+**Instructions**
+
+* Shoot icons to make them follow you.
+* You take damage if they touch you.
+* Bring them to the dropzone (the center area) to score points.
+* You make more points the more followers you bring at once.
+* You take more damage the more followers you have.
+
+**Controls**
+    
+* Up / A - Move Forward 
+* Down / S - Move Backward 
+* Left / A - Strafe Left
+* Right / D - Strafe Right
+* Space / Left Click - Shoot
+* Mouse Wheel - Zoom
+* Escape - Pause Menu
+
+You can also press `O` to open up the development settings, most of them
+can be adjusted in real-time, but it may crash the game.
 
 ## TODO
 
 - [ ] music
 - [ ] wire up the volume / mute controls and buttons
-- [ ] winning screen
-- [ ] pause menu screen
 
 ## Copyright / Licenses
 

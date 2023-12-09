@@ -81,6 +81,9 @@ impl Command for FollowScreen {
 pub struct ScreenTag;
 
 #[derive(Component)]
+pub struct ScoreScreenTag;
+
+#[derive(Component)]
 pub struct ScoreScreenTextTag;
 
 #[derive(Component)]
@@ -139,6 +142,7 @@ impl Command for ScoreScreen {
                                 ..Default::default()
                             },
                             ScreenTag,
+                            ScoreScreenTag,
                             RenderLayers::layer(CAMERA_LAYER_UI),
                         ))
                         .with_children(|parent| {
@@ -270,7 +274,9 @@ impl ButtonChildBuilder {
     }
 }
 
-pub struct TitleScreen {}
+pub struct TitleScreen {
+    pause_screen: bool,
+}
 
 impl TitleScreen {
     const CREDITS: &'static str = "Game by @mattzq for Bevy Jam #4
@@ -340,7 +346,11 @@ impl Command for TitleScreen {
                         .with_children(|parent| {
                             parent.spawn((
                                 TextBundle::from_section(
-                                    "ICON WARS!",
+                                    if self.pause_screen {
+                                        "PAUSE"
+                                    } else {
+                                        "ICON WARS!"
+                                    },
                                     TextStyle {
                                         font: resource.title.clone(),
                                         font_size: 128.0,
@@ -382,11 +392,19 @@ impl Command for TitleScreen {
                                     ));
                                 });
 
-                            ButtonChildBuilder {
-                                label: "Start Game",
-                                kind: ButtonKind::StartGame,
+                            if self.pause_screen {
+                                ButtonChildBuilder {
+                                    label: "Resume Game",
+                                    kind: ButtonKind::ResumeGame,
+                                }
+                                .spawn(parent, &resource);
+                            } else {
+                                ButtonChildBuilder {
+                                    label: "Start Game",
+                                    kind: ButtonKind::StartGame,
+                                }
+                                .spawn(parent, &resource);
                             }
-                            .spawn(parent, &resource);
                             ButtonChildBuilder {
                                 label: "Music Off",
                                 kind: ButtonKind::ToggleMusic,
@@ -400,9 +418,18 @@ impl Command for TitleScreen {
 
                             #[cfg(not(target_arch = "wasm32"))]
                             {
+                                if !self.pause_screen {
+                                    ButtonChildBuilder {
+                                        label: "Quit Game",
+                                        kind: ButtonKind::QuitGame,
+                                    }
+                                    .spawn(parent, &resource);
+                                }
+                            }
+                            if self.pause_screen {
                                 ButtonChildBuilder {
-                                    label: "Quit Game",
-                                    kind: ButtonKind::QuitGame,
+                                    label: "Back to Main Menu",
+                                    kind: ButtonKind::BackToMainMenu,
                                 }
                                 .spawn(parent, &resource);
                             }
@@ -445,7 +472,7 @@ impl Command for TitleScreen {
 
 pub struct GameOverScreen {
     pub score: u32,
-    pub score_total: u32,
+    pub winner: bool,
 }
 
 impl Command for GameOverScreen {
@@ -490,7 +517,7 @@ impl Command for GameOverScreen {
                         .with_children(|parent| {
                             parent.spawn((
                                 TextBundle::from_section(
-                                    "GAME OVER",
+                                    if self.winner { "YOU WIN!" } else { "GAME OVER" },
                                     TextStyle {
                                         font: resource.title.clone(),
                                         font_size: 128.0,
@@ -520,10 +547,11 @@ impl Command for GameOverScreen {
                                 .with_children(|parent| {
                                     parent.spawn((
                                         TextBundle::from_section(
-                                            format!(
-                                                "You have lost the game!\nScore: {} of {}",
-                                                self.score, self.score_total
-                                            ),
+                                                if self.winner {
+                                                    format!("Congratulations! You collected ALL the icons!\nThat's a LOT of icons!\nThank you for playing! <3\nScore: {}", self.score)
+                                                } else {
+                                                    format!("Thank you for playing! <3\nScore: {}", self.score)
+                                                },
                                             TextStyle {
                                                 font: resource.text2.clone(),
                                                 font_size: 21.0,
@@ -553,17 +581,27 @@ impl Plugin for HudPlugin {
         app.add_systems(OnEnter(GameState::MainMenu), enter_main_menu_system);
         app.add_systems(OnEnter(GameState::GameOver), enter_game_over_system);
         app.add_systems(OnEnter(GameState::GameRunning), enter_game_running_system);
+        app.add_systems(OnEnter(GameState::GamePaused), enter_game_paused_system);
 
         app.add_systems(
             Update,
-            update_button_interaction_system
-                .run_if(in_state(GameState::MainMenu).or_else(in_state(GameState::GameOver))),
+            toggle_game_pause_system
+                .run_if(in_state(GameState::GameRunning).or_else(in_state(GameState::GamePaused))),
+        );
+
+        app.add_systems(
+            Update,
+            update_button_interaction_system.run_if(
+                in_state(GameState::MainMenu)
+                    .or_else(in_state(GameState::GamePaused))
+                    .or_else(in_state(GameState::GameOver)),
+            ),
         );
 
         app.add_systems(
             Update,
             (update_hud_system, show_icon_follower_added_system)
-                .run_if(in_state(GameState::GameRunning)),
+                .run_if(in_state(GameState::GameRunning).or_else(in_state(GameState::GamePaused))),
         );
     }
 }
@@ -572,7 +610,9 @@ pub fn enter_main_menu_system(mut commands: Commands, screens: Query<Entity, Wit
     for screen_entity in screens.iter() {
         commands.entity(screen_entity).despawn_recursive();
     }
-    commands.add(TitleScreen {});
+    commands.add(TitleScreen {
+        pause_screen: false,
+    });
 }
 
 pub fn enter_game_running_system(
@@ -592,6 +632,17 @@ pub fn enter_game_running_system(
     });
 }
 
+fn enter_game_paused_system(
+    mut commands: Commands,
+    mut _settings: ResMut<SettingsResource>,
+    screens: Query<Entity, (With<ScreenTag>, Without<ScoreScreenTag>)>,
+) {
+    for screen_entity in screens.iter() {
+        commands.entity(screen_entity).despawn_recursive();
+    }
+    commands.add(TitleScreen { pause_screen: true });
+}
+
 pub fn update_hud_system(
     mut commands: Commands,
     health: ResMut<PlayerHealth>,
@@ -607,29 +658,21 @@ pub fn update_hud_system(
 fn enter_game_over_system(
     mut commands: Commands,
     mut _settings: ResMut<SettingsResource>,
-    items: Query<&IconType>,
     screens: Query<Entity, With<ScreenTag>>,
+    score: ResMut<PlayerScore>,
+    icons: Query<&IconType>,
 ) {
     for screen_entity in screens.iter() {
         commands.entity(screen_entity).despawn_recursive();
     }
 
-    let mut score = 0;
-    let mut total = 0;
-    items.for_each(|icon_type| {
-        if icon_type.0 == Type::Player {
-            return;
-        }
+    let is_winner = icons
+        .iter()
+        .all(|icon_type| icon_type.0 == Type::Player || icon_type.0 == Type::Captured);
 
-        if icon_type.0 == Type::Captured {
-            score += 1;
-        }
-
-        total += 1;
-    });
     commands.add(GameOverScreen {
-        score,
-        score_total: total,
+        score: score.score,
+        winner: is_winner,
     });
 }
 
@@ -700,5 +743,19 @@ fn show_icon_follower_added_system(
         commands.add(FollowScreen {
             text: format!("{} IS NOW FOLLOWING YOU", name),
         });
+    }
+}
+
+fn toggle_game_pause_system(
+    keys: Res<Input<KeyCode>>,
+    current_state: Res<State<GameState>>,
+    mut state: ResMut<NextState<GameState>>,
+) {
+    if keys.just_pressed(KeyCode::Escape) {
+        if *current_state.get() == GameState::GamePaused {
+            state.set(GameState::GameRunning);
+        } else if *current_state.get() == GameState::GameRunning {
+            state.set(GameState::GamePaused);
+        }
     }
 }

@@ -17,6 +17,9 @@ pub enum GameState {
     /// Game is running
     GameRunning,
 
+    /// Game is paused
+    GamePaused,
+
     /// Player died or won
     GameOver,
 }

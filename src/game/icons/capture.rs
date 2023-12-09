@@ -303,6 +303,7 @@ fn player_follower_dropzone(
     mut events: EventWriter<IconCaptureEvent>,
     mut score: ResMut<PlayerScore>,
     settings: Res<SettingsResource>,
+    mut state: ResMut<NextState<GameState>>,
 ) {
     let position = player.single().position;
 
@@ -330,6 +331,14 @@ fn player_follower_dropzone(
 
             // update position in spatial index, or just remove it?
             spatial_index.0.insert(*follower, new_position, Vec2::ZERO);
+
+            // check for win condition:
+            let is_winner = icons.iter().all(|(_, _, icon_type)| {
+                icon_type.0 == Type::Player || icon_type.0 == Type::Captured
+            });
+            if is_winner {
+                state.set(GameState::GameOver);
+            }
         }
         followers.followers.clear();
     }
