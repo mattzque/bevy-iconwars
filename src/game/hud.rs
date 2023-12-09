@@ -3,6 +3,7 @@ use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy::{ecs::system::Command, render::view::RenderLayers};
 
+use super::audio::AudioSettingsResource;
 use super::icons::events::PlayerFollowEvent;
 use super::icons::health::{PlayerHealth, PlayerScore};
 use super::icons::{IconSheetRef, IconType, Type};
@@ -307,165 +308,180 @@ Escape - Pause Menu";
 impl Command for TitleScreen {
     fn apply(self, world: &mut World) {
         world.resource_scope::<FontResource, ()>(|world, resource| {
-            world
-                .spawn((
-                    NodeBundle {
-                        style: Style {
-                            width: Val::Vw(100.0),
-                            height: Val::Vh(100.0),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            ..Default::default()
-                        },
-                        background_color: Color::hex("#12141844").unwrap().into(), // Color::rgba(1.0, 0.0, 0.0, 0.1).into(),
-                        ..Default::default()
-                    },
-                    ScreenTag,
-                    RenderLayers::layer(CAMERA_LAYER_UI),
-                ))
-                .with_children(|child| {
-                    child
-                        .spawn((
-                            NodeBundle {
-                                style: Style {
-                                    min_width: Val::Px(200.0),
-                                    // height: Val::Px(200.0),
-                                    padding: UiRect::all(Val::Px(32.0)),
-                                    margin: UiRect::bottom(Val::Px(64.0)),
-                                    justify_content: JustifyContent::FlexStart,
-                                    align_items: AlignItems::Center,
-                                    flex_direction: FlexDirection::Column,
-                                    row_gap: Val::Px(16.0),
-                                    ..Default::default()
-                                },
-                                background_color: Color::hex("#121418CC").unwrap().into(), // Color::rgba(1.0, 0.0, 0.0, 0.1).into(),
+            world.resource_scope::<AudioSettingsResource, ()>(|world, audio_settings| {
+                world
+                    .spawn((
+                        NodeBundle {
+                            style: Style {
+                                width: Val::Vw(100.0),
+                                height: Val::Vh(100.0),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
                                 ..Default::default()
                             },
-                            RenderLayers::layer(CAMERA_LAYER_UI),
-                        ))
-                        .with_children(|parent| {
-                            parent.spawn((
-                                TextBundle::from_section(
-                                    if self.pause_screen {
-                                        "PAUSE"
-                                    } else {
-                                        "ICON WARS!"
-                                    },
-                                    TextStyle {
-                                        font: resource.title.clone(),
-                                        font_size: 128.0,
-                                        color: Color::hex("#6b9894").unwrap(),
-                                    },
-                                ),
-                                RenderLayers::layer(CAMERA_LAYER_UI),
-                            ));
-
-                            parent
-                                .spawn((
-                                    NodeBundle {
-                                        style: Style {
-                                            min_width: Val::Px(200.0),
-                                            // height: Val::Px(200.0),
-                                            padding: UiRect::all(Val::Px(8.0)),
-                                            margin: UiRect::bottom(Val::Px(8.0)),
-                                            justify_content: JustifyContent::FlexStart,
-                                            align_items: AlignItems::FlexStart,
-                                            ..Default::default()
-                                        },
-                                        background_color: Color::hex("#121418DD").unwrap().into(), // Color::rgba(1.0, 0.0, 0.0, 0.1).into(),
+                            background_color: Color::hex("#12141844").unwrap().into(), // Color::rgba(1.0, 0.0, 0.0, 0.1).into(),
+                            ..Default::default()
+                        },
+                        ScreenTag,
+                        RenderLayers::layer(CAMERA_LAYER_UI),
+                    ))
+                    .with_children(|child| {
+                        child
+                            .spawn((
+                                NodeBundle {
+                                    style: Style {
+                                        min_width: Val::Px(200.0),
+                                        // height: Val::Px(200.0),
+                                        padding: UiRect::all(Val::Px(32.0)),
+                                        margin: UiRect::bottom(Val::Px(64.0)),
+                                        justify_content: JustifyContent::FlexStart,
+                                        align_items: AlignItems::Center,
+                                        flex_direction: FlexDirection::Column,
+                                        row_gap: Val::Px(16.0),
                                         ..Default::default()
                                     },
+                                    background_color: Color::hex("#121418CC").unwrap().into(), // Color::rgba(1.0, 0.0, 0.0, 0.1).into(),
+                                    ..Default::default()
+                                },
+                                RenderLayers::layer(CAMERA_LAYER_UI),
+                            ))
+                            .with_children(|parent| {
+                                parent.spawn((
+                                    TextBundle::from_section(
+                                        if self.pause_screen {
+                                            "PAUSE"
+                                        } else {
+                                            "ICON WARS!"
+                                        },
+                                        TextStyle {
+                                            font: resource.title.clone(),
+                                            font_size: 128.0,
+                                            color: Color::hex("#6b9894").unwrap(),
+                                        },
+                                    ),
                                     RenderLayers::layer(CAMERA_LAYER_UI),
-                                ))
-                                .with_children(|parent| {
-                                    parent.spawn((
-                                        TextBundle::from_section(
-                                            Self::INSTRUCTIONS,
-                                            TextStyle {
-                                                font: resource.text2.clone(),
-                                                font_size: 21.0,
-                                                color: Color::hex("#adbacb").unwrap(),
+                                ));
+
+                                parent
+                                    .spawn((
+                                        NodeBundle {
+                                            style: Style {
+                                                min_width: Val::Px(200.0),
+                                                // height: Val::Px(200.0),
+                                                padding: UiRect::all(Val::Px(8.0)),
+                                                margin: UiRect::bottom(Val::Px(8.0)),
+                                                justify_content: JustifyContent::FlexStart,
+                                                align_items: AlignItems::FlexStart,
+                                                ..Default::default()
                                             },
-                                        )
-                                        .with_text_alignment(TextAlignment::Center),
+                                            background_color: Color::hex("#121418DD")
+                                                .unwrap()
+                                                .into(), // Color::rgba(1.0, 0.0, 0.0, 0.1).into(),
+                                            ..Default::default()
+                                        },
                                         RenderLayers::layer(CAMERA_LAYER_UI),
-                                    ));
-                                });
+                                    ))
+                                    .with_children(|parent| {
+                                        parent.spawn((
+                                            TextBundle::from_section(
+                                                Self::INSTRUCTIONS,
+                                                TextStyle {
+                                                    font: resource.text2.clone(),
+                                                    font_size: 21.0,
+                                                    color: Color::hex("#adbacb").unwrap(),
+                                                },
+                                            )
+                                            .with_text_alignment(TextAlignment::Center),
+                                            RenderLayers::layer(CAMERA_LAYER_UI),
+                                        ));
+                                    });
 
-                            if self.pause_screen {
-                                ButtonChildBuilder {
-                                    label: "Resume Game",
-                                    kind: ButtonKind::ResumeGame,
-                                }
-                                .spawn(parent, &resource);
-                            } else {
-                                ButtonChildBuilder {
-                                    label: "Start Game",
-                                    kind: ButtonKind::StartGame,
-                                }
-                                .spawn(parent, &resource);
-                            }
-                            ButtonChildBuilder {
-                                label: "Music Off",
-                                kind: ButtonKind::ToggleMusic,
-                            }
-                            .spawn(parent, &resource);
-                            ButtonChildBuilder {
-                                label: "Sound Off",
-                                kind: ButtonKind::ToggleSound,
-                            }
-                            .spawn(parent, &resource);
-
-                            #[cfg(not(target_arch = "wasm32"))]
-                            {
-                                if !self.pause_screen {
+                                if self.pause_screen {
                                     ButtonChildBuilder {
-                                        label: "Quit Game",
-                                        kind: ButtonKind::QuitGame,
+                                        label: "Resume Game",
+                                        kind: ButtonKind::ResumeGame,
+                                    }
+                                    .spawn(parent, &resource);
+                                } else {
+                                    ButtonChildBuilder {
+                                        label: "Start Game",
+                                        kind: ButtonKind::StartGame,
                                     }
                                     .spawn(parent, &resource);
                                 }
-                            }
-                            if self.pause_screen {
                                 ButtonChildBuilder {
-                                    label: "Back to Main Menu",
-                                    kind: ButtonKind::BackToMainMenu,
+                                    label: if audio_settings.mute_music {
+                                        "MUSIC ON"
+                                    } else {
+                                        "MUSIC OFF"
+                                    },
+
+                                    kind: ButtonKind::ToggleMusic,
                                 }
                                 .spawn(parent, &resource);
-                            }
+                                ButtonChildBuilder {
+                                    label: if audio_settings.mute_effects {
+                                        "SOUND ON"
+                                    } else {
+                                        "SOUND OFF"
+                                    },
+                                    kind: ButtonKind::ToggleSound,
+                                }
+                                .spawn(parent, &resource);
 
-                            parent
-                                .spawn((
-                                    NodeBundle {
-                                        style: Style {
-                                            min_width: Val::Px(200.0),
-                                            // height: Val::Px(200.0),
-                                            padding: UiRect::all(Val::Px(8.0)),
-                                            margin: UiRect::bottom(Val::Px(8.0)),
-                                            justify_content: JustifyContent::FlexStart,
-                                            align_items: AlignItems::FlexStart,
+                                #[cfg(not(target_arch = "wasm32"))]
+                                {
+                                    if !self.pause_screen {
+                                        ButtonChildBuilder {
+                                            label: "Quit Game",
+                                            kind: ButtonKind::QuitGame,
+                                        }
+                                        .spawn(parent, &resource);
+                                    }
+                                }
+                                if self.pause_screen {
+                                    ButtonChildBuilder {
+                                        label: "Back to Main Menu",
+                                        kind: ButtonKind::BackToMainMenu,
+                                    }
+                                    .spawn(parent, &resource);
+                                }
+
+                                parent
+                                    .spawn((
+                                        NodeBundle {
+                                            style: Style {
+                                                min_width: Val::Px(200.0),
+                                                // height: Val::Px(200.0),
+                                                padding: UiRect::all(Val::Px(8.0)),
+                                                margin: UiRect::bottom(Val::Px(8.0)),
+                                                justify_content: JustifyContent::FlexStart,
+                                                align_items: AlignItems::FlexStart,
+                                                ..Default::default()
+                                            },
+                                            background_color: Color::hex("#121418DD")
+                                                .unwrap()
+                                                .into(), // Color::rgba(1.0, 0.0, 0.0, 0.1).into(),
                                             ..Default::default()
                                         },
-                                        background_color: Color::hex("#121418DD").unwrap().into(), // Color::rgba(1.0, 0.0, 0.0, 0.1).into(),
-                                        ..Default::default()
-                                    },
-                                    RenderLayers::layer(CAMERA_LAYER_UI),
-                                ))
-                                .with_children(|parent| {
-                                    parent.spawn((
-                                        TextBundle::from_section(
-                                            Self::CREDITS,
-                                            TextStyle {
-                                                font: resource.text2.clone(),
-                                                font_size: 21.0,
-                                                color: Color::hex("#adbacb").unwrap(),
-                                            },
-                                        ),
                                         RenderLayers::layer(CAMERA_LAYER_UI),
-                                    ));
-                                });
-                        });
-                });
+                                    ))
+                                    .with_children(|parent| {
+                                        parent.spawn((
+                                            TextBundle::from_section(
+                                                Self::CREDITS,
+                                                TextStyle {
+                                                    font: resource.text2.clone(),
+                                                    font_size: 21.0,
+                                                    color: Color::hex("#adbacb").unwrap(),
+                                                },
+                                            ),
+                                            RenderLayers::layer(CAMERA_LAYER_UI),
+                                        ));
+                                    });
+                            });
+                    });
+            });
         });
     }
 }
@@ -679,13 +695,17 @@ fn enter_game_over_system(
 #[allow(clippy::type_complexity)]
 fn update_button_interaction_system(
     mut interaction_query: Query<
-        (&Interaction, &mut BackgroundColor, &ButtonKind),
+        (&Interaction, &mut BackgroundColor, &ButtonKind, &Children),
         (Changed<Interaction>, With<Button>),
     >,
+    mut text_query: Query<&mut Text>,
     mut exit: EventWriter<AppExit>,
     mut state: ResMut<NextState<GameState>>,
+    mut audio_settings: ResMut<AudioSettingsResource>,
 ) {
-    for (interaction, mut color, button_kind) in &mut interaction_query {
+    for (interaction, mut color, button_kind, children) in &mut interaction_query {
+        let mut text = text_query.get_mut(children[0]).unwrap();
+
         match *interaction {
             Interaction::Pressed => match button_kind {
                 ButtonKind::StartGame => {
@@ -697,8 +717,22 @@ fn update_button_interaction_system(
                 ButtonKind::BackToMainMenu => {
                     state.set(GameState::MainMenu);
                 }
-                ButtonKind::ToggleMusic => todo!(),
-                ButtonKind::ToggleSound => todo!(),
+                ButtonKind::ToggleMusic => {
+                    audio_settings.mute_music = !audio_settings.mute_music;
+                    text.sections[0].value = if audio_settings.mute_music {
+                        "MUSIC ON".to_string()
+                    } else {
+                        "MUSIC OFF".to_string()
+                    };
+                }
+                ButtonKind::ToggleSound => {
+                    audio_settings.mute_effects = !audio_settings.mute_effects;
+                    text.sections[0].value = if audio_settings.mute_effects {
+                        "SOUND ON".to_string()
+                    } else {
+                        "SOUND OFF".to_string()
+                    };
+                }
                 ButtonKind::QuitGame => {
                     exit.send(AppExit);
                 }

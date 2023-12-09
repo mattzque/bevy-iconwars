@@ -28,11 +28,6 @@ mostly based around a simple boids simulation.
 You can also press `O` to open up the development settings, most of them
 can be adjusted in real-time, but it may crash the game.
 
-## TODO
-
-- [ ] music
-- [ ] wire up the volume / mute controls and buttons
-
 ## Copyright / Licenses
 
 ### Font Awesome Icons
