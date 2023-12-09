@@ -2,6 +2,7 @@ use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 
 mod assets;
+mod audio;
 mod camera;
 mod debug;
 mod hud;
@@ -24,8 +25,8 @@ impl Plugin for GamePlugin {
             render::RenderPlugin,
             camera::CameraPlugin,
             hud::HudPlugin,
+            audio::AudioPlugin,
         ));
-
         app.add_plugins((debug::DebugPlugin, FrameTimeDiagnosticsPlugin));
     }
 }

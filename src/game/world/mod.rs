@@ -42,6 +42,13 @@ impl WorldBoundaryResource {
             && point.y <= self.dropzone_max.y
     }
 
+    pub fn in_bounds(&self, point: Vec2) -> bool {
+        point.x >= self.bounds_min.x
+            && point.x <= self.bounds_max.x
+            && point.y >= self.bounds_min.y
+            && point.y <= self.bounds_max.y
+    }
+
     pub fn size(&self) -> Vec2 {
         self.bounds_max - self.bounds_min
     }
@@ -57,7 +64,11 @@ impl Plugin for WorldPlugin {
     }
 }
 
-fn setup_world_grid(mut commands: Commands, boundary: Res<WorldBoundaryResource>) {
+fn setup_world_grid(
+    mut commands: Commands,
+    boundary: Res<WorldBoundaryResource>,
+    mut state: ResMut<NextState<GameState>>,
+) {
     let width = boundary.bounds_max.x - boundary.bounds_min.x;
     let height = boundary.bounds_max.y - boundary.bounds_min.y;
 
@@ -126,4 +137,6 @@ fn setup_world_grid(mut commands: Commands, boundary: Res<WorldBoundaryResource>
         RenderLayers::layer(CAMERA_LAYER),
         NoAutomaticBatching,
     ));
+
+    state.set(GameState::MainMenu);
 }

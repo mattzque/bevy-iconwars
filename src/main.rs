@@ -1,7 +1,9 @@
 use bevy::{
     app::{App, PluginGroup},
     asset::AssetMetaCheck,
+    gizmos::GizmoPlugin,
     log::LogPlugin,
+    pbr::PbrPlugin,
     window::{PresentMode, Window, WindowPlugin, WindowResolution},
     DefaultPlugins,
 };
@@ -25,7 +27,9 @@ fn main() {
                     ..Default::default()
                 }),
                 ..Default::default()
-            }),))
+            })
+            .disable::<PbrPlugin>()
+            .disable::<GizmoPlugin>(),))
         .add_plugins(game::GamePlugin)
         .run();
 }

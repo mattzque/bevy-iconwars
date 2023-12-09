@@ -5,6 +5,8 @@ pub struct SettingsResource {
     pub max_speed: f32,
     pub max_force: f32,
 
+    pub max_icons: u32,
+
     pub avoidance_distance_dropzone: f32,
     pub avoidance_force_dropzone: f32,
     pub avoidance_force_bounds: f32,
@@ -42,6 +44,12 @@ pub struct SettingsResource {
 
     pub player_damage_amount: i32,
     pub player_damage_cooldown: f32,
+    pub player_max_health: i32,
+
+    // player gains additional points for bringing more followers to the dropzone at once
+    pub player_score_follower_multiplier: f32,
+    // player takes more damage the more followers they have
+    pub player_damage_follower_multiplier: f32,
 }
 
 impl Default for SettingsResource {
@@ -49,6 +57,8 @@ impl Default for SettingsResource {
         Self {
             max_speed: 0.290,
             max_force: 0.05,
+
+            max_icons: 0,
 
             avoidance_distance_dropzone: 87.0,
             avoidance_force_dropzone: 85.0,
@@ -90,6 +100,10 @@ impl Default for SettingsResource {
 
             player_damage_amount: 10,
             player_damage_cooldown: 0.5,
+
+            player_max_health: 100,
+            player_score_follower_multiplier: 0.1,
+            player_damage_follower_multiplier: 0.5,
         }
     }
 }

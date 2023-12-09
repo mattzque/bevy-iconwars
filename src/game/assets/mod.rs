@@ -7,6 +7,7 @@ use bevy::render::texture::{ImageFilterMode, ImageSampler, ImageSamplerDescripto
 
 use self::icons::IconSheetAsset;
 
+use super::audio::AudioFileResource;
 use super::hud::FontResource;
 use super::icons::IconSheetResource;
 use super::states::GameState;
@@ -36,10 +37,34 @@ fn load_assets_system(
     server: Res<AssetServer>,
     mut state: ResMut<NextState<GameState>>,
 ) {
+    let mut pending = HashSet::new();
+
+    let icons: Handle<IconSheetAsset> = server.load("icons.icon.json");
+    pending.insert(icons.clone().untyped());
+
     let font_title: Handle<Font> = server.load("fonts/GasoekOne-Regular.ttf");
     let font_text: Handle<Font> = server.load("fonts/DMSans-Black.ttf");
     let font_text2: Handle<Font> = server.load("fonts/DMSans-Regular.ttf");
-    let icons: Handle<IconSheetAsset> = server.load("icons.icon.json");
+    pending.insert(font_title.clone().untyped());
+    pending.insert(font_text.clone().untyped());
+    pending.insert(font_text2.clone().untyped());
+
+    let music: Vec<Handle<AudioSource>> = vec![
+        server.load("music/track2.ogg"),
+        server.load("music/track3.ogg"),
+        server.load("music/track4.ogg"),
+    ];
+    let shoot: Handle<AudioSource> = server.load("sfx/shoot_01.ogg");
+    let hit: Handle<AudioSource> = server.load("sfx/weird_03.ogg");
+    let capture: Handle<AudioSource> = server.load("sfx/misc_05.ogg");
+    let damage: Handle<AudioSource> = server.load("sfx/misc_02.ogg");
+
+    pending.extend(music.iter().map(|handle| handle.clone().untyped()));
+    pending.insert(shoot.clone().untyped());
+    pending.insert(hit.clone().untyped());
+    pending.insert(capture.clone().untyped());
+    pending.insert(damage.clone().untyped());
+
     commands.insert_resource(IconSheetResource {
         handle: icons.clone(),
         texture_array: None,
@@ -49,12 +74,14 @@ fn load_assets_system(
         text: font_text.clone(),
         text2: font_text2.clone(),
     });
-    commands.insert_resource(PendingAssets(HashSet::from_iter(vec![
-        icons.untyped(),
-        font_title.untyped(),
-        font_text.untyped(),
-        font_text2.untyped(),
-    ])));
+    commands.insert_resource(AudioFileResource {
+        music,
+        shoot,
+        hit,
+        capture,
+        damage,
+    });
+    commands.insert_resource(PendingAssets(pending));
     state.set(GameState::AssetsLoading);
 }
 

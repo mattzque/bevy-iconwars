@@ -7,6 +7,8 @@ use crate::game::{settings::SettingsResource, states::GameState};
 
 use super::commands::{CircleShapeCommand, LineShapeCommand};
 use super::components::{IconFollowerCircle, IconFollowerLine, IconType, Type};
+use super::events::{IconCaptureEvent, PlayerFollowEvent, ProjectileSpawnEvent};
+use super::health::PlayerScore;
 use super::ICON_CIRCLE_RADIUS;
 use super::{
     components::IconTransform, resources::SpatialIndexResource, IconPlayerController, ICON_SIZE,
@@ -38,13 +40,13 @@ impl IconCapturedGrid {
         let x = (min.x + (index % cols) as f32 * icon_size) + icon_size / 2.0;
         let y = (min.y + (cols - (index / cols) - 1) as f32 * icon_size) + icon_size / 2.0;
 
-        let perfect_grid_offset = (cols * cols) - n_icons as i32;
-        if perfect_grid_offset > 0 {
-            println!(
-                "perfect grid would need {} more icons!",
-                perfect_grid_offset
-            );
-        }
+        // let perfect_grid_offset = (cols * cols) - n_icons as i32;
+        // if perfect_grid_offset > 0 {
+        //     println!(
+        //         "perfect grid would need {} more icons!",
+        //         perfect_grid_offset
+        //     );
+        // }
 
         // (Vec2::new(x, y), icon_size / ICON_SIZE)
         Vec2::new(x, y)
@@ -52,7 +54,7 @@ impl IconCapturedGrid {
 }
 
 #[derive(Resource, Debug, Default)]
-struct IconFollowers {
+pub struct IconFollowers {
     pub followers: HashSet<Entity>,
 }
 
@@ -60,9 +62,13 @@ pub struct IconCapturePlugin;
 
 impl Plugin for IconCapturePlugin {
     fn build(&self, app: &mut App) {
+        app.add_event::<PlayerFollowEvent>();
+        app.add_event::<ProjectileSpawnEvent>();
+        app.add_event::<IconCaptureEvent>();
         app.insert_resource(IconCapturedGrid::default());
         app.insert_resource(ProjectileCooldown::default());
         app.insert_resource(IconFollowers::default());
+        app.add_systems(OnEnter(GameState::MainMenu), (reset_resources));
         app.add_systems(
             Update,
             (
@@ -87,6 +93,12 @@ pub struct ProjectileCooldown {
     pub timer: Option<Timer>,
 }
 
+fn reset_resources(mut commands: Commands) {
+    commands.insert_resource(IconCapturedGrid::default());
+    commands.insert_resource(ProjectileCooldown::default());
+    commands.insert_resource(IconFollowers::default());
+}
+
 #[allow(clippy::too_many_arguments)]
 fn spawn_projectile_system(
     mut commands: Commands,
@@ -98,9 +110,8 @@ fn spawn_projectile_system(
     boundaries: Res<WorldBoundaryResource>,
     time: Res<Time>,
     mut cooldown: ResMut<ProjectileCooldown>,
+    mut events: EventWriter<ProjectileSpawnEvent>,
 ) {
-    let n_projectiles = 1 + followers.followers.len(); // cap it!
-
     if let Some(timer) = cooldown.timer.as_mut() {
         timer.tick(time.delta());
         if !timer.finished() {
@@ -109,6 +120,8 @@ fn spawn_projectile_system(
     }
 
     if keys.just_pressed(KeyCode::Space) || mouse_button_input.just_pressed(MouseButton::Left) {
+        let n_projectiles = (1 + followers.followers.len()).min(20);
+
         let player = player.single();
 
         // no shooting in the dropzone!
@@ -133,6 +146,8 @@ fn spawn_projectile_system(
 
             let direction = Vec2::new(rotation.cos(), rotation.sin());
             let start = player.position + direction * ICON_CIRCLE_RADIUS;
+
+            events.send(ProjectileSpawnEvent);
 
             commands.add(CircleShapeCommand {
                 radius: 8.0,
@@ -160,6 +175,7 @@ fn update_projectiles_system(
     settings: Res<SettingsResource>,
     boundaries: Res<WorldBoundaryResource>,
     mut followers: ResMut<IconFollowers>,
+    mut events: EventWriter<PlayerFollowEvent>,
 ) {
     let dt = time.delta_seconds();
     for (entity, mut transform, Projectile { start, velocity }) in projectiles.iter_mut() {
@@ -186,6 +202,7 @@ fn update_projectiles_system(
             if icon_type.0 == Type::Free {
                 // icon becomes a follower!
                 followers.followers.insert(result.key);
+                events.send(PlayerFollowEvent { entity: result.key });
 
                 // despawn projectile:
                 commands.entity(entity).despawn();
@@ -275,6 +292,7 @@ fn update_follower_paths(
 // when player moves into drop zone / or is in the drop zone
 // all follower icons are put into the drop zone and no longer move at all,
 // arranging the icons in a grid
+#[allow(clippy::too_many_arguments)]
 fn player_follower_dropzone(
     boundaries: Res<WorldBoundaryResource>,
     mut followers: ResMut<IconFollowers>,
@@ -282,16 +300,15 @@ fn player_follower_dropzone(
     player: Query<&IconTransform, With<IconPlayerController>>,
     mut captured: ResMut<IconCapturedGrid>,
     mut spatial_index: ResMut<SpatialIndexResource>,
+    mut events: EventWriter<IconCaptureEvent>,
+    mut score: ResMut<PlayerScore>,
+    settings: Res<SettingsResource>,
 ) {
     let position = player.single().position;
 
-    // icons.iter_mut().for_each(|(entity, _, mut icon_type)| {
-    //     icon_type.0 = Type::Follower;
-    //     followers.followers.insert(entity);
-    // });
-
     if boundaries.in_dropzone(position) && !followers.followers.is_empty() {
         let icon_count = icons.iter().count();
+        let mut n_events_sent = 0;
         for follower in followers.followers.iter() {
             let mut icon = icons.get_mut(*follower).unwrap();
 
@@ -301,7 +318,15 @@ fn player_follower_dropzone(
             icon.1.position = new_position; //  Vec2::ZERO; // TODO!
             icon.1.rotation = 0.0;
             icon.2 .0 = Type::Captured;
-            println!("captured icon! {:?}", follower);
+
+            score.score += 1
+                + (followers.followers.len() as f32 * settings.player_score_follower_multiplier)
+                    as u32;
+
+            if n_events_sent < 10 {
+                events.send(IconCaptureEvent { entity: *follower });
+                n_events_sent += 1;
+            }
 
             // update position in spatial index, or just remove it?
             spatial_index.0.insert(*follower, new_position, Vec2::ZERO);

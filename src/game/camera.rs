@@ -74,7 +74,7 @@ fn setup_cameras(mut commands: Commands) {
 }
 
 fn make_camera_visible(
-    mut query: Query<(&mut Camera, &mut OrthographicProjection), With<CameraTag>>,
+    mut query: Query<(&mut Transform, &mut Camera, &mut OrthographicProjection), With<CameraTag>>,
     window: Query<&Window>,
     boundaries: Res<WorldBoundaryResource>,
 ) {
@@ -83,10 +83,11 @@ fn make_camera_visible(
     let world_size = boundaries.size();
     let max_scale = (world_size.x / window.width()).max(world_size.y / window.height());
 
-    let (mut camera, mut projection) = query.single_mut();
+    let (mut transform, mut camera, mut projection) = query.single_mut();
 
     camera.is_active = true;
     projection.scale = max_scale;
+    transform.translation = Vec3::ZERO;
 }
 
 fn enter_game_running_system(mut query: Query<&mut OrthographicProjection, With<CameraTag>>) {

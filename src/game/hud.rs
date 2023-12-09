@@ -3,8 +3,9 @@ use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy::{ecs::system::Command, render::view::RenderLayers};
 
-use super::icons::health::{PlayerHealth, TOTAL_HEALTH};
-use super::icons::{IconType, Type};
+use super::icons::events::PlayerFollowEvent;
+use super::icons::health::{PlayerHealth, PlayerScore};
+use super::icons::{IconSheetRef, IconType, Type};
 use super::{camera::CAMERA_LAYER_UI, settings::SettingsResource, states::GameState};
 
 #[derive(Resource)]
@@ -13,6 +14,9 @@ pub struct FontResource {
     pub text: Handle<Font>,
     pub text2: Handle<Font>,
 }
+
+#[derive(Component)]
+pub struct FollowScreenTag;
 
 pub struct FollowScreen {
     pub text: String,
@@ -33,6 +37,8 @@ impl Command for FollowScreen {
                         },
                         ..Default::default()
                     },
+                    FollowScreenTag,
+                    ScreenTag,
                     RenderLayers::layer(CAMERA_LAYER_UI),
                 ))
                 .with_children(|child| {
@@ -82,14 +88,13 @@ pub struct HealthBarTag;
 
 pub struct ScoreScreen {
     pub score: u32,
-    pub score_total: u32,
     pub health: i32,
     pub health_total: i32,
 }
 
 impl ScoreScreen {
     pub fn score_line(&self) -> String {
-        format!("{} / {}", self.score, self.score_total)
+        format!("{}", self.score)
     }
 
     pub fn health_percent(&self) -> f32 {
@@ -276,11 +281,20 @@ Gasoek One by Jiashuo Zhang and JAMO (OFL)
 DM Sans by Colophon Foundry, Jonny Pinhorn and Indian Type Foundry (OFL)
 
 and Bevy (https://bevyengine.org/)";
-    const INSTRUCTIONS: &'static str = "Up / A - Move Forward 
+    const INSTRUCTIONS: &'static str = "Instructions:
+Shoot icons to make them follow you.
+You take damage if they touch you.
+Bring them to the dropzone (the center area) to score points.
+You make more points the more followers you bring at once.
+You take more damage the more followers you have.
+    
+Controls:
+Up / A - Move Forward 
 Down / S - Move Backward 
 Left / A - Strafe Left
 Right / D - Strafe Right
 Space / Left Click - Shoot
+Mouse Wheel - Zoom
 Escape - Pause Menu";
 }
 
@@ -546,7 +560,11 @@ impl Plugin for HudPlugin {
                 .run_if(in_state(GameState::MainMenu).or_else(in_state(GameState::GameOver))),
         );
 
-        app.add_systems(Update, update_hud.run_if(in_state(GameState::GameRunning)));
+        app.add_systems(
+            Update,
+            (update_hud_system, show_icon_follower_added_system)
+                .run_if(in_state(GameState::GameRunning)),
+        );
     }
 }
 
@@ -561,54 +579,30 @@ pub fn enter_game_running_system(
     mut commands: Commands,
     mut _settings: ResMut<SettingsResource>,
     health: ResMut<PlayerHealth>,
+    score: ResMut<PlayerScore>,
     items: Query<&IconType>,
     screens: Query<Entity, With<ScreenTag>>,
 ) {
     for screen_entity in screens.iter() {
         commands.entity(screen_entity).despawn_recursive();
     }
-    // commands.add(FollowScreen { text: "RUST IS NOW FOLLOWING YOU".to_string() });
-    // commands.add(TitleScreen {});
-    let mut score = 0;
-    let mut total = 0;
-    items.for_each(|icon_type| {
-        if icon_type.0 == Type::Player {
-            return;
-        }
-
-        if icon_type.0 == Type::Captured {
-            score += 1;
-        }
-
-        total += 1;
-    });
     commands.add(ScoreScreen {
-        score,
-        score_total: total,
+        score: score.score,
         health: health.health,
-        health_total: TOTAL_HEALTH,
+        health_total: health.max_health,
     });
 }
 
-pub fn update_hud(mut commands: Commands, items: Query<&IconType>, health: ResMut<PlayerHealth>) {
-    let mut score = 0;
-    let mut total = 0;
-    items.for_each(|icon_type| {
-        if icon_type.0 == Type::Player {
-            return;
-        }
-
-        if icon_type.0 == Type::Captured {
-            score += 1;
-        }
-
-        total += 1;
-    });
+pub fn update_hud_system(
+    mut commands: Commands,
+    items: Query<&IconType>,
+    health: ResMut<PlayerHealth>,
+    score: ResMut<PlayerScore>,
+) {
     commands.add(ScoreScreen {
-        score,
-        score_total: total,
+        score: score.score,
         health: health.health,
-        health_total: TOTAL_HEALTH,
+        health_total: health.max_health,
     });
 }
 
@@ -675,5 +669,38 @@ fn update_button_interaction_system(
                 *color = Color::hex("#2d333b").unwrap().into();
             }
         }
+    }
+}
+
+fn show_icon_follower_added_system(
+    mut commands: Commands,
+    mut events: EventReader<PlayerFollowEvent>,
+    time: Res<Time>,
+    mut last_shown_at: Local<Option<f32>>,
+    icons: Query<&IconSheetRef>,
+    screens: Query<Entity, With<FollowScreenTag>>,
+) {
+    if let Some(last_shown_at_) = *last_shown_at {
+        let duration = 0.8;
+        let elapsed = time.elapsed_seconds() - last_shown_at_;
+
+        if elapsed > duration {
+            for follow_entity in screens.iter() {
+                commands.entity(follow_entity).despawn_recursive();
+            }
+        }
+    }
+
+    for PlayerFollowEvent { entity } in events.read() {
+        let name = icons.get(*entity).unwrap().icon_name.to_uppercase();
+        *last_shown_at = Some(time.elapsed_seconds());
+
+        for follow_entity in screens.iter() {
+            commands.entity(follow_entity).despawn_recursive();
+        }
+
+        commands.add(FollowScreen {
+            text: format!("{} IS NOW FOLLOWING YOU", name),
+        });
     }
 }

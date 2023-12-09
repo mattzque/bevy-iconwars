@@ -45,7 +45,6 @@ where
             radius: self.radius,
             center: Vec2::ZERO,
         });
-        println!("circle spawn!");
         world.spawn((
             ShapeBundle {
                 path: builder.build(),

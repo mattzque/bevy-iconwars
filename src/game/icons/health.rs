@@ -1,27 +1,26 @@
 use bevy::prelude::*;
+use bevy::transform::commands;
 use bevy_prototype_lyon::prelude::*;
 
 use crate::game::world::WorldBoundaryResource;
 use crate::game::{settings::SettingsResource, states::GameState};
 
+use super::capture::IconFollowers;
 use super::components::{IconPlayerCircle, IconType, Type};
+use super::events::PlayerDamageEvent;
 use super::{
     components::IconTransform, resources::SpatialIndexResource, IconPlayerController, ICON_SIZE,
 };
 
-pub const TOTAL_HEALTH: i32 = 100;
+#[derive(Resource, Debug, Default)]
+pub struct PlayerScore {
+    pub score: u32,
+}
 
 #[derive(Resource, Debug)]
 pub struct PlayerHealth {
     pub health: i32,
-}
-
-impl Default for PlayerHealth {
-    fn default() -> Self {
-        Self {
-            health: TOTAL_HEALTH,
-        }
-    }
+    pub max_health: i32,
 }
 
 #[derive(Resource, Default)]
@@ -29,18 +28,17 @@ pub struct PlayerDamageCooldown {
     pub timer: Option<Timer>,
 }
 
-#[derive(Event, Debug)]
-pub struct PlayerDamageEvent {
-    pub amount: i32,
-}
+// TODO: the more followers you have when dropping them off, the more points you get!
+//       but colliding with an icon also damages you more the more followers you have
+//       so you have to balance the risk/reward of dropping off more followers at once
 
 pub struct PlayerHealthPlugin;
 
 impl Plugin for PlayerHealthPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<PlayerDamageEvent>();
-        app.insert_resource(PlayerHealth::default());
         app.insert_resource(PlayerDamageCooldown::default());
+        app.add_systems(OnEnter(GameState::MainMenu), reset_resources);
         app.add_systems(
             Update,
             (
@@ -51,6 +49,15 @@ impl Plugin for PlayerHealthPlugin {
                 .run_if(in_state(GameState::GameRunning)),
         );
     }
+}
+
+fn reset_resources(mut commands: Commands, settings: Res<SettingsResource>) {
+    commands.insert_resource(PlayerHealth {
+        health: settings.player_max_health,
+        max_health: settings.player_max_health,
+    });
+    commands.insert_resource(PlayerScore::default());
+    commands.insert_resource(PlayerDamageCooldown::default());
 }
 
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
@@ -65,6 +72,7 @@ fn damage_player_system(
     boundaries: Res<WorldBoundaryResource>,
     mut events: EventWriter<PlayerDamageEvent>,
     mut state: ResMut<NextState<GameState>>,
+    followers: Res<IconFollowers>,
 ) {
     let player_transform = player.single();
 
@@ -83,11 +91,14 @@ fn damage_player_system(
         let icon_type = icon_types.get(result.key).unwrap();
         if icon_type.0 == Type::Free || icon_type.0 == Type::Follower {
             // player damage!
-            let damage = settings.player_damage_amount;
+            let damage = settings.player_damage_amount
+                + (followers.followers.len() as f32 * settings.player_damage_follower_multiplier)
+                    as i32;
 
             health.health -= damage;
 
-            info!("Health: {}", health.health);
+            info!("damage: {} (health: {})", damage, health.health);
+
             events.send(PlayerDamageEvent { amount: damage });
 
             if health.health <= 0 {

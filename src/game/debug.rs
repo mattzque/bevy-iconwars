@@ -3,18 +3,40 @@ use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
 use super::settings::SettingsResource;
 
+#[derive(Resource, Default)]
+pub struct ShowDebug {
+    show: bool,
+}
+
 pub struct DebugPlugin;
 
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
+        app.insert_resource(ShowDebug::default());
         app.add_plugins(EguiPlugin);
         app.add_systems(Update, render_settings_gui);
+        app.add_systems(Update, toggle_debug);
     }
 }
 
-pub fn render_settings_gui(mut settings: ResMut<SettingsResource>, mut contexts: EguiContexts) {
+pub fn toggle_debug(keys: Res<Input<KeyCode>>, mut show_debug: ResMut<ShowDebug>) {
+    if keys.just_pressed(KeyCode::O) {
+        show_debug.show = !show_debug.show;
+    }
+}
+
+pub fn render_settings_gui(
+    mut settings: ResMut<SettingsResource>,
+    mut contexts: EguiContexts,
+    show_debug: Res<ShowDebug>,
+) {
+    if !show_debug.show {
+        return;
+    }
     egui::Window::new("SettingsResource").show(contexts.ctx_mut(), |ui| {
         ui.style_mut().spacing.slider_width = 300.0;
+
+        ui.add(egui::Slider::new(&mut settings.max_icons, 0..=2000).text("Max Icons (0 = all)"));
 
         ui.add(egui::Slider::new(&mut settings.max_speed, 0.0..=2.0).text("Max Speed"));
         ui.add(egui::Slider::new(&mut settings.max_force, 0.0..=2.0).text("Max Force"));
@@ -137,6 +159,18 @@ pub fn render_settings_gui(mut settings: ResMut<SettingsResource>, mut contexts:
         ui.add(
             egui::Slider::new(&mut settings.player_damage_cooldown, 0.0..=1.0)
                 .text("Player: Damage Cooldown (secs)"),
+        );
+
+        ui.add(
+            egui::Slider::new(&mut settings.player_max_health, 0..=1000).text("Player: Max Health"),
+        );
+        ui.add(
+            egui::Slider::new(&mut settings.player_score_follower_multiplier, 0.0..=3.0)
+                .text("Player: Score Follower Multiplier"),
+        );
+        ui.add(
+            egui::Slider::new(&mut settings.player_damage_follower_multiplier, 0.0..=3.0)
+                .text("Player: Damage Follower Multiplier"),
         );
     });
 }

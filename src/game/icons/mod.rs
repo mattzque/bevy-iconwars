@@ -9,8 +9,7 @@ use rand::prelude::*;
 use crate::game::camera::{CAMERA_LAYER, CAMERA_Z_ICONS};
 use crate::game::icons::commands::CircleShapeCommand;
 use crate::game::icons::components::{
-    IconEntity, IconInstanceData, IconPlayerCircle, IconRenderEntity, IconSheetRef, IconVelocity,
-    SheetIndex,
+    IconEntity, IconInstanceData, IconPlayerCircle, IconRenderEntity, IconVelocity, SheetIndex,
 };
 use crate::game::icons::resources::{HoveredIcon, SpatialIndexResource};
 
@@ -25,13 +24,14 @@ mod capture;
 pub mod commands;
 mod components;
 mod controller;
+pub mod events;
 pub mod health;
 mod renderer;
 mod resources;
 mod roaming;
 mod spatial;
 
-pub use components::{IconPlayerController, IconTransform, IconType, Type};
+pub use components::{IconPlayerController, IconSheetRef, IconTransform, IconType, Type};
 pub use resources::IconSheetResource;
 
 pub const ICON_SIZE: f32 = 32.0;
@@ -52,7 +52,7 @@ impl Plugin for IconPlugin {
             capture::IconCapturePlugin,
             health::PlayerHealthPlugin,
         ));
-        app.add_systems(OnEnter(GameState::GameLoading), init_icons_system);
+        app.add_systems(OnEnter(GameState::MainMenu), init_icons_system);
         app.add_systems(
             Update,
             (
@@ -78,6 +78,7 @@ fn random_position_in_bounds(rng: &mut ThreadRng, boundaries: &WorldBoundaryReso
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn init_icons_system(
     mut commands: Commands,
     resource: Res<IconSheetResource>,
@@ -85,7 +86,23 @@ fn init_icons_system(
     mut meshes: ResMut<Assets<Mesh>>,
     mut state: ResMut<NextState<GameState>>,
     boundaries: Res<WorldBoundaryResource>,
+
+    player_circle: Query<Entity, With<IconPlayerCircle>>,
+    existing_icons: Query<Entity, With<IconEntity>>,
+    render_entity: Query<Entity, With<IconRenderEntity>>,
+
+    settings: Res<SettingsResource>,
 ) {
+    if let Ok(entity) = player_circle.get_single() {
+        commands.entity(entity).despawn_recursive();
+    }
+    for entity in existing_icons.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+    if let Ok(entity) = render_entity.get_single() {
+        commands.entity(entity).despawn_recursive();
+    }
+
     let WorldBoundaryResource {
         bounds_min,
         bounds_max,
@@ -135,9 +152,16 @@ fn init_icons_system(
                     let is_player = icon.name == "rust";
                     if is_player {
                         player_ = true;
-                        position = Vec2::ZERO;
+                        position = Vec2::new(
+                            0.0,
+                            (boundaries.dropzone_max.y - boundaries.dropzone_min.y) * 0.25,
+                        );
                         rotation = 0.0;
                         player_position = position;
+                    }
+
+                    if !is_player && (settings.max_icons != 0 && count > settings.max_icons) {
+                        break;
                     }
 
                     let initial_speed = 1.0;
@@ -191,9 +215,9 @@ fn init_icons_system(
                 }
             });
     });
-    info!("Fitted {} icons in {:?}", count, start.elapsed());
+    // info!("Fitted {} icons in {:?}", count, start.elapsed());
 
-    info!("Spawned {} icons", count);
+    // info!("Spawned {} icons", count);
 
     let mesh = Mesh::from(shape::Quad {
         size: Vec2::splat(ICON_SIZE),
@@ -223,7 +247,7 @@ fn init_icons_system(
 
     commands.insert_resource(SpatialIndexResource(spatial_index));
 
-    state.set(GameState::MainMenu);
+    // state.set(GameState::MainMenu);
 }
 
 fn update_icon_instance_data(
@@ -240,15 +264,24 @@ pub fn apply_icon_velocity(
     time: Res<Time>,
     settings: Res<SettingsResource>,
     mut spatial_index: ResMut<SpatialIndexResource>,
-    mut query: Query<(Entity, &mut IconTransform, &IconVelocity, &IconType)>,
+    mut query: Query<(Entity, &mut IconTransform, &mut IconVelocity, &IconType)>,
     mut player_circle: Query<&mut Transform, With<IconPlayerCircle>>,
+    boundaries: Res<WorldBoundaryResource>,
 ) {
-    for (entity, mut position, velocity, icon_type) in query.iter_mut() {
+    for (entity, mut position, mut velocity, icon_type) in query.iter_mut() {
         if icon_type.0 == Type::Captured {
             continue;
         }
 
-        position.position += velocity.0 * (time.delta_seconds() * settings.velocity_time_scale);
+        let new_position =
+            position.position + velocity.0 * (time.delta_seconds() * settings.velocity_time_scale);
+
+        if !boundaries.in_bounds(new_position) {
+            velocity.0 = -velocity.0;
+            continue;
+        }
+
+        position.position = new_position;
 
         // update spatial index with new position and velocity
         spatial_index

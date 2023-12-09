@@ -1,5 +1,13 @@
+# Icon Wars
 
+My entry for Bevy Game Jam #4
 
+## TODO
+
+- [ ] music
+- [ ] wire up the volume / mute controls and buttons
+- [ ] winning screen
+- [ ] pause menu screen
 
 ## Copyright / Licenses
 
