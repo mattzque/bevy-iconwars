@@ -96,8 +96,6 @@ fn damage_player_system(
 
                 health.health -= damage;
 
-                info!("damage: {} (health: {})", damage, health.health);
-
                 events.send(PlayerDamageEvent { amount: damage });
 
                 if health.health <= 0 {

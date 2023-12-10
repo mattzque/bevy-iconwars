@@ -122,7 +122,7 @@ fn spawn_projectile_system(
 
         // no shooting in the dropzone!
         if boundaries.in_dropzone(player.position) {
-            return;
+            // return;
         }
 
         cooldown.timer = Some(Timer::from_seconds(
@@ -135,10 +135,8 @@ fn spawn_projectile_system(
         let step = spread / n_projectiles as f32;
 
         for i in 0..n_projectiles {
-            let rotation = (i as f32) * step - half_spread;
-
-            // TODO FIXME wrong buggy
-            let rotation = (player.rotation + std::f32::consts::PI / 2.0) + rotation + half_spread;
+            let rotation = (i as f32) * step + (step / 2.0);
+            let rotation = (player.rotation + std::f32::consts::PI / 2.0) + rotation - half_spread;
 
             let direction = Vec2::new(rotation.cos(), rotation.sin());
             let start = player.position + direction * ICON_CIRCLE_RADIUS;
@@ -160,6 +158,16 @@ fn spawn_projectile_system(
         }
     }
 }
+// float angleStep = SpreadAngle / NumberOfProjectiles;
+//         float aimingAngle = AimOrigin.rotation.eulerAngles.z;
+//         float centeringOffset = (SpreadAngle / 2) - (angleStep / 2); //offsets every projectile so the spread is                                                                                                                         //centered on the mouse cursor
+
+//         for (int i = 0; i < NumberOfProjectiles; i++)
+//         {
+//             float currentBulletAngle = angleStep * i;
+
+//             Quaternion rotation = Quaternion.Euler(new Vector3(0, 0, aimingAngle + currentBulletAngle - centeringOffset));
+//             GameObject bullet = Instantiate(BulletPrefab, ProjectileSpawnPosition.position, rotation);
 
 #[allow(clippy::too_many_arguments)]
 fn update_projectiles_system(
