@@ -28,6 +28,11 @@ mostly based around a simple boids simulation.
 You can also press `O` to open up the development settings, most of them
 can be adjusted in real-time, but it may crash the game.
 
+## Changelog
+
+* `v0.1.2` fixed a bug where the game crashed when all music tracks were played
+* `v0.1.1` initial release
+
 ## Copyright / Licenses
 
 ### Font Awesome Icons
