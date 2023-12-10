@@ -1,8 +1,4 @@
-use std::time::Duration;
-
 use bevy::prelude::*;
-use bevy::utils::Instant;
-// use bevy::utils::Instant;
 
 use crate::game::{settings::SettingsResource, states::GameState, world::WorldBoundaryResource};
 
@@ -241,20 +237,18 @@ fn get_icon_velocity(
     target_position: &Vec2,
     icon_type: &IconType,
     _query: &Query<RoamingQuery>,
-) -> (Duration, Vec2) {
+) -> Vec2 {
     let mut max_force = settings.max_force;
     let mut max_speed = settings.max_speed;
 
     if icon_type.0 == Type::Captured {
-        return (Duration::default(), Vec2::ZERO);
+        return Vec2::ZERO;
     }
 
     if icon_type.0 == Type::Follower {
         max_speed = settings.seek_max_speed;
         max_force = settings.seek_max_force;
     }
-
-    let start = Instant::now();
 
     let nearest = spatial_index
         .simple_query(*position, settings.collision_distance)
@@ -300,8 +294,6 @@ fn get_icon_velocity(
         max_speed,
         max_force,
     );
-
-    let duration = start.elapsed();
 
     let mut player_avoidance_force = Vec2::ZERO;
     if icon_type.0 != Type::Follower {
@@ -386,7 +378,7 @@ fn get_icon_velocity(
         velocity.y = 0.0;
     }
 
-    (duration, velocity)
+    velocity
 }
 
 fn update_icon_roaming_velocity(
@@ -414,33 +406,28 @@ fn update_icon_roaming_velocity(
         })
         .unwrap();
 
-    let mut total_duration = Duration::default();
-
     let velocities = query
         .iter()
         .map(
             |(entity, IconTransform { position, rotation }, velocity, icon_type)| {
-                let (duration, velocity) = get_icon_velocity(
+                (
                     entity,
-                    position,
-                    rotation,
-                    &velocity.0,
-                    &spatial_index.0,
-                    &settings,
-                    &boundaries,
-                    player_position,
-                    icon_type,
-                    &query,
-                );
-
-                total_duration += duration;
-
-                (entity, velocity)
+                    get_icon_velocity(
+                        entity,
+                        position,
+                        rotation,
+                        &velocity.0,
+                        &spatial_index.0,
+                        &settings,
+                        &boundaries,
+                        player_position,
+                        icon_type,
+                        &query,
+                    ),
+                )
             },
         )
         .collect::<Vec<(Entity, Vec2)>>();
-
-    info!("duration: {:?}", total_duration);
 
     for (entity, velocity) in velocities.into_iter() {
         if let Ok((_, mut icon_transform, mut icon_velocity, icon_type)) = query.get_mut(entity) {
@@ -459,6 +446,4 @@ fn update_icon_roaming_velocity(
             }
         }
     }
-
-    // debug!("update_icon_velocity in {:?}", start.elapsed());
 }

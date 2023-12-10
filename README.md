@@ -30,6 +30,7 @@ can be adjusted in real-time, but it may crash the game.
 
 ## Changelog
 
+* `v0.1.3` removed some verbose debug logging; fixed player allowed to shoot in dropzone
 * `v0.1.2` fixed a bug where the game crashed when all music tracks were played
 * `v0.1.1` initial release
 

@@ -122,7 +122,7 @@ fn spawn_projectile_system(
 
         // no shooting in the dropzone!
         if boundaries.in_dropzone(player.position) {
-            // return;
+            return;
         }
 
         cooldown.timer = Some(Timer::from_seconds(
