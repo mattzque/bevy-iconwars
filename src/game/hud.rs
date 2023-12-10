@@ -668,6 +668,11 @@ impl Plugin for HudPlugin {
         app.add_systems(OnEnter(GameState::MainMenu), enter_main_menu_system);
         app.add_systems(OnEnter(GameState::GameOver), enter_game_over_system);
         app.add_systems(OnEnter(GameState::GameRunning), enter_game_running_system);
+        app.add_systems(
+            Update,
+            set_cursor_game_running_system.run_if(in_state(GameState::GameRunning)),
+        );
+        app.add_systems(OnExit(GameState::GameRunning), exit_game_running_system);
         app.add_systems(OnEnter(GameState::GamePaused), enter_game_paused_system);
         app.add_systems(
             Update,
@@ -734,6 +739,18 @@ pub fn enter_game_running_system(
         health: health.health,
         health_total: health.max_health,
     });
+}
+
+pub fn set_cursor_game_running_system(mut windows: Query<&mut Window>) {
+    if let Ok(mut window) = windows.get_single_mut() {
+        window.cursor.icon = CursorIcon::Crosshair;
+    }
+}
+
+pub fn exit_game_running_system(mut windows: Query<&mut Window>) {
+    if let Ok(mut window) = windows.get_single_mut() {
+        window.cursor.icon = CursorIcon::Default;
+    }
 }
 
 fn enter_game_paused_system(

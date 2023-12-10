@@ -68,7 +68,9 @@ impl Plugin for IconCapturePlugin {
         app.insert_resource(IconCapturedGrid::default());
         app.insert_resource(ProjectileCooldown::default());
         app.insert_resource(IconFollowers::default());
-        app.add_systems(OnEnter(GameState::MainMenu), reset_resources);
+
+        app.add_systems(OnEnter(GameState::GameOver), despawn_game_over);
+        app.add_systems(OnEnter(GameState::MainMenu), despawn_game_over);
         app.add_systems(
             Update,
             (
@@ -91,12 +93,6 @@ pub struct Projectile {
 #[derive(Resource, Default)]
 pub struct ProjectileCooldown {
     pub timer: Option<Timer>,
-}
-
-fn reset_resources(mut commands: Commands) {
-    commands.insert_resource(IconCapturedGrid::default());
-    commands.insert_resource(ProjectileCooldown::default());
-    commands.insert_resource(IconFollowers::default());
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -341,5 +337,23 @@ fn player_follower_dropzone(
             }
         }
         followers.followers.clear();
+    }
+}
+
+fn despawn_game_over(
+    mut commands: Commands,
+    lines: Query<Entity, With<IconFollowerLine>>,
+    circles: Query<Entity, With<IconFollowerCircle>>,
+    projectiles: Query<Entity, With<Projectile>>,
+    mut followers: ResMut<IconFollowers>,
+) {
+    followers.followers.clear();
+    commands.insert_resource(IconCapturedGrid::default());
+    commands.insert_resource(ProjectileCooldown::default());
+    commands.insert_resource(IconFollowers::default());
+
+    // despawn all of them:
+    for entity in lines.iter().chain(circles.iter()).chain(projectiles.iter()) {
+        commands.entity(entity).despawn_recursive();
     }
 }

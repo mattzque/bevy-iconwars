@@ -11,6 +11,7 @@ pub struct SettingsResource {
     pub avoidance_force_dropzone: f32,
     pub avoidance_force_bounds: f32,
 
+    pub max_force_distance: f32,
     pub velocity_time_scale: f32,
     pub collision_distance: f32,
     pub separation_distance: f32,
@@ -66,6 +67,7 @@ impl Default for SettingsResource {
 
             velocity_time_scale: 300.0,
 
+            max_force_distance: 128.0,
             collision_distance: 77.0,
             separation_distance: 143.0,
             alignment_distance: 94.0,

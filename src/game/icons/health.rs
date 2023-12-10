@@ -87,28 +87,29 @@ fn damage_player_system(
     }
 
     for result in index.0.query(player_transform.position, ICON_SIZE) {
-        let icon_type = icon_types.get(result.key).unwrap();
-        if icon_type.0 == Type::Free || icon_type.0 == Type::Follower {
-            // player damage!
-            let damage = settings.player_damage_amount
-                + (followers.followers.len() as f32 * settings.player_damage_follower_multiplier)
-                    as i32;
+        if let Ok(icon_type) = icon_types.get(result.key) {
+            if icon_type.0 == Type::Free || icon_type.0 == Type::Follower {
+                // player damage!
+                let damage = settings.player_damage_amount
+                    + (followers.followers.len() as f32
+                        * settings.player_damage_follower_multiplier) as i32;
 
-            health.health -= damage;
+                health.health -= damage;
 
-            info!("damage: {} (health: {})", damage, health.health);
+                info!("damage: {} (health: {})", damage, health.health);
 
-            events.send(PlayerDamageEvent { amount: damage });
+                events.send(PlayerDamageEvent { amount: damage });
 
-            if health.health <= 0 {
-                state.set(GameState::GameOver);
+                if health.health <= 0 {
+                    state.set(GameState::GameOver);
+                }
+
+                // set cooldown timer:
+                cooldown.timer = Some(Timer::from_seconds(
+                    settings.player_damage_cooldown,
+                    TimerMode::Once,
+                ));
             }
-
-            // set cooldown timer:
-            cooldown.timer = Some(Timer::from_seconds(
-                settings.player_damage_cooldown,
-                TimerMode::Once,
-            ));
         }
     }
 }

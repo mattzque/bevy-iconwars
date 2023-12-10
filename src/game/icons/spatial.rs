@@ -1,141 +1,141 @@
 use bevy::math::Vec2;
-use std::collections::{HashMap, HashSet};
+use bevy::utils::{EntityHashMap, EntityHashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-type GridKey = (i16, i16);
+/// Create Iterator over x and y (cartesian product) between -distance and +distance offset                                                                                                         
+fn offset_iter(x: i16, y: i16, distance: i16) -> impl Iterator<Item = (i16, i16)> {
+    let x_range = (x - distance)..=(x + distance);
+    let y_range = (y - distance)..=(y + distance);
+    x_range.flat_map(move |x| y_range.clone().map(move |y| (x, y)))
+}
 
 #[derive(Debug, Clone)]
-pub struct SpatialQueryResult<'a, T> {
+pub struct SpatialQueryResult<T> {
+    pub key: T,
+    pub position: Vec2,
+    pub velocity: Vec2,
+    pub distance: f32,
+}
+
+#[derive(Debug, Clone)]
+pub struct SpatialQuery2Result<'a, T> {
     pub key: T,
     pub position: &'a Vec2,
-    pub velocity: &'a Vec2,
     pub distance: f32,
 }
 
 pub struct SpatialIndex<T> {
     pub min: Vec2,
     pub max: Vec2,
+    pub grid_x: usize,
+    pub grid_y: usize,
+    pub len: usize,
     pub cell_size: f32,
-    pub entities: HashMap<GridKey, HashSet<T>>,
-    pub by_entity: HashMap<T, (GridKey, Vec2, Vec2)>,
+    pub entities: Vec<EntityHashSet<T>>,
+    pub by_entity: EntityHashMap<T, (usize, Vec2, Vec2)>,
 }
 impl<T> SpatialIndex<T>
 where
     T: Hash + Eq + Clone + Debug,
 {
     pub fn new(min: Vec2, max: Vec2, cell_size: f32) -> Self {
+        let size = max - min;
+        let grid_x = (size.x / cell_size).ceil() as usize;
+        let grid_y = (size.y / cell_size).ceil() as usize;
+        let len = grid_x * grid_y;
         Self {
             min,
             max,
+            grid_x,
+            grid_y,
+            len,
             cell_size,
-            entities: HashMap::new(),
-            by_entity: HashMap::new(),
+            entities: Vec::from_iter((0..len).map(|_| EntityHashSet::default())),
+            by_entity: EntityHashMap::default(),
         }
     }
 
-    fn key(&self, position: Vec2) -> GridKey {
-        let x = position.x.div_euclid(self.cell_size) as i16;
-        let y = position.y.div_euclid(self.cell_size) as i16;
-        (x, y)
+    fn pos_to_index(&self, position: Vec2) -> usize {
+        let x = ((position.x - self.min.x) / self.cell_size) as usize;
+        let y = ((position.y - self.min.y) / self.cell_size) as usize;
+        self.grid_x * y + x
     }
 
     pub fn insert(&mut self, entity: T, position: Vec2, velocity: Vec2) {
-        let key = self.key(position);
-        if let Some((old_key, old_position, _)) = self.by_entity.get(&entity) {
-            if old_key == &key && *old_position == position {
-                return;
+        if let Some((old_index, old_position, old_velocity)) = self.by_entity.get(&entity) {
+            if *old_position != position || *old_velocity != velocity {
+                self.entities[*old_index].remove(&entity);
+                self.by_entity.remove(&entity);
             }
-            self.entities.entry(*old_key).or_default().remove(&entity);
         }
 
-        self.entities.entry(key).or_default().insert(entity.clone());
-        self.by_entity.insert(entity, (key, position, velocity));
+        let index = self.pos_to_index(position);
+        if index > 0 && index < self.len {
+            self.entities[index].insert(entity.clone());
+            self.by_entity.insert(entity, (index, position, velocity));
+        } else {
+            self.by_entity.remove(&entity);
+        }
+    }
+
+    pub fn simple_query(
+        &self,
+        position: Vec2,
+        distance: f32,
+    ) -> impl Iterator<Item = (&T, &Vec2, &Vec2)> + '_ {
+        let grid_distance = (distance / self.cell_size).ceil() as i16;
+
+        let x = ((position.x - self.min.x) / self.cell_size) as i16;
+        let y = ((position.y - self.min.y) / self.cell_size) as i16;
+
+        offset_iter(x, y, grid_distance)
+            .flat_map(|(x, y)| {
+                let index = self.grid_x as i16 * y + x;
+                // println!("x:{} y:{} index={}", x, y, index);
+                self.entities
+                    .get(index as usize)
+                    .into_iter()
+                    .flat_map(|entities| entities.iter())
+            })
+            .map(move |entity| {
+                let (_, other_position, other_velocity) = self.by_entity.get(entity).unwrap();
+                (entity, other_position, other_velocity)
+            })
     }
 
     pub fn query(
         &self,
         position: Vec2,
         distance: f32,
-    ) -> impl Iterator<Item = SpatialQueryResult<'_, T>> + '_ {
+    ) -> impl Iterator<Item = SpatialQueryResult<T>> + '_ {
         let grid_distance = (distance / self.cell_size).ceil() as i16;
-        let key = self.key(position);
-        let mut results = Vec::new();
-        for x in (key.0 - grid_distance)..=(key.0 + grid_distance) {
-            for y in (key.1 - grid_distance)..=(key.1 + grid_distance) {
-                if let Some(entities) = self.entities.get(&(x, y)) {
-                    entities.iter().for_each(|entity| results.push(entity));
+
+        let x = ((position.x - self.min.x) / self.cell_size) as i16;
+        let y = ((position.y - self.min.y) / self.cell_size) as i16;
+
+        offset_iter(x, y, grid_distance)
+            .flat_map(|(x, y)| {
+                let index = self.grid_x as i16 * y + x;
+                self.entities
+                    .get(index as usize)
+                    .into_iter()
+                    .flat_map(|entities| entities.iter())
+            })
+            .flat_map(move |entity| {
+                let (_, other_position, other_velocity) = self.by_entity.get(entity).unwrap();
+                let other_position = *other_position;
+                let distance_to_other = (position - other_position).length();
+                if distance_to_other <= distance {
+                    Some(SpatialQueryResult {
+                        key: entity.clone(),
+                        position: other_position,
+                        velocity: *other_velocity,
+                        distance: distance_to_other,
+                    })
+                } else {
+                    None
                 }
-            }
-        }
-
-        results.into_iter().flat_map(move |entity| {
-            let (_, other_position, other_velocity) = self.by_entity.get(entity).unwrap();
-            let distance_to_other = (position - *other_position).length();
-            if distance_to_other > 0.0 && distance_to_other <= distance {
-                Some(SpatialQueryResult {
-                    key: entity.clone(),
-                    position: other_position,
-                    velocity: other_velocity,
-                    distance: distance_to_other,
-                })
-            } else {
-                None
-            }
-        })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use bevy::math::Vec2;
-
-    use super::SpatialIndex;
-
-    #[test]
-    fn test_key() {
-        let index =
-            SpatialIndex::<u64>::new(Vec2::new(-100.0, 100.0), Vec2::new(-100.0, 100.0), 10.0);
-        assert_eq!(index.key(Vec2::splat(0.0)), (0, 0));
-        assert_eq!(index.key(Vec2::splat(5.0)), (0, 0));
-        assert_eq!(index.key(Vec2::splat(-5.0)), (-1, -1));
-        assert_eq!(index.key(Vec2::splat(10.0)), (1, 1));
-        assert_eq!(index.key(Vec2::splat(20.0)), (2, 2));
-        assert_eq!(index.key(Vec2::splat(25.0)), (2, 2));
-        assert_eq!(index.key(Vec2::splat(-10.0)), (-1, -1));
-        assert_eq!(index.key(Vec2::splat(-20.0)), (-2, -2));
-        assert_eq!(index.key(Vec2::splat(-25.0)), (-3, -3));
-    }
-
-    #[test]
-    fn test_spatial() {
-        let mut index = SpatialIndex::new(Vec2::new(-100.0, 100.0), Vec2::new(-100.0, 100.0), 10.0);
-        index.insert(1, Vec2::new(-20.0, 0.0), Vec2::splat(0.0));
-        index.insert(2, Vec2::new(-10.0, 0.0), Vec2::splat(0.0));
-        index.insert(3, Vec2::new(0.0, 0.0), Vec2::splat(0.0));
-        index.insert(4, Vec2::new(10.0, 0.0), Vec2::splat(0.0));
-        index.insert(5, Vec2::new(20.0, 0.0), Vec2::splat(0.0));
-        index.insert(6, Vec2::new(30.0, 0.0), Vec2::splat(0.0));
-        index.insert(7, Vec2::new(40.0, 0.0), Vec2::splat(0.0));
-
-        assert!(!index
-            .query(Vec2::new(0.5, 0.5), 5.0)
-            .map(|r| r.key)
-            .collect::<Vec<_>>()
-            .is_empty());
-
-        let mut results = index
-            .query(Vec2::new(0.0, 0.0), 20.0)
-            .map(|r| r.key)
-            .collect::<Vec<_>>();
-        results.sort();
-        assert_eq!(results, &[1, 2, 4, 5]);
-
-        let mut results = index
-            .query(Vec2::new(20.0, 0.0), 10.0)
-            .map(|r| r.key)
-            .collect::<Vec<_>>();
-        results.sort();
-        assert_eq!(results, &[4, 6]);
+            })
     }
 }

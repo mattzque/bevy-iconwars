@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
+use bevy::utils::Instant;
 // use bevy::utils::Instant;
 
 use crate::game::{settings::SettingsResource, states::GameState, world::WorldBoundaryResource};
@@ -40,12 +43,13 @@ fn limit_vec2(vector: Vec2, max_length: f32) -> Vec2 {
 ///
 /// Returns: separation force vector
 #[allow(clippy::too_many_arguments)]
+#[inline(always)]
 fn get_separation_force(
     entity: Entity,
-    position: Vec2,
+    position: &Vec2,
     _rotation: &f32,
-    velocity: Vec2,
-    spatial_index: &SpatialIndex<Entity>,
+    velocity: &Vec2,
+    nearest: &[(&Entity, &Vec2, &Vec2)],
     separation_distance: f32,
     max_speed: f32,
     max_force: f32,
@@ -53,23 +57,27 @@ fn get_separation_force(
     let mut steer = Vec2::ZERO;
     let mut count = 0;
 
-    for result in spatial_index.query(position, separation_distance) {
-        if result.key == entity {
+    for (other_entity, other_position, _) in nearest {
+        if **other_entity == entity {
             continue;
         }
-        let mut diff = position - *result.position;
-        diff = diff.normalize();
-        diff /= result.distance;
-        steer += diff;
-        count += 1;
+        let mut diff = *position - **other_position;
+        let distance = diff.length();
+        if distance < separation_distance {
+            diff = diff.normalize();
+            diff /= distance;
+            steer += diff;
+            count += 1;
+        }
     }
+
     if count > 0 {
         steer /= count as f32;
     }
     if steer.length() > 0.0 {
         steer = steer.normalize();
         steer *= max_speed;
-        steer -= velocity;
+        steer -= *velocity;
         steer = limit_vec2(steer, max_force);
     }
     steer
@@ -79,30 +87,37 @@ fn get_separation_force(
 ///
 /// Returns: alignment force vector
 #[allow(clippy::too_many_arguments)]
+#[inline(always)]
 fn get_alignment_force(
     entity: Entity,
-    position: Vec2,
+    position: &Vec2,
     _rotation: &f32,
-    velocity: Vec2,
-    spatial_index: &SpatialIndex<Entity>,
+    velocity: &Vec2,
+    nearest: &[(&Entity, &Vec2, &Vec2)],
     alignment_distance: f32,
     max_speed: f32,
     max_force: f32,
 ) -> Vec2 {
     let mut average_velocity = Vec2::ZERO;
     let mut count = 0;
-    for result in spatial_index.query(position, alignment_distance) {
-        if result.key == entity {
+
+    for (other_entity, other_position, other_velocity) in nearest {
+        if **other_entity == entity {
             continue;
         }
-        average_velocity += *result.velocity;
-        count += 1;
+        let distance = (*position - **other_position).length();
+
+        if distance < alignment_distance {
+            average_velocity += **other_velocity;
+            count += 1;
+        }
     }
+
     if count > 0 {
         average_velocity /= count as f32;
         average_velocity = average_velocity.normalize();
         average_velocity *= max_speed;
-        average_velocity -= velocity;
+        average_velocity -= *velocity;
         average_velocity = limit_vec2(average_velocity, max_force);
         average_velocity
     } else {
@@ -110,6 +125,7 @@ fn get_alignment_force(
     }
 }
 
+#[inline(always)]
 fn get_seek_force(
     position: Vec2,
     velocity: Vec2,
@@ -132,26 +148,32 @@ fn get_seek_force(
 ///
 /// Returns: cohesion force vector
 #[allow(clippy::too_many_arguments)]
+#[inline(always)]
 fn get_cohesion_force(
     _entity: Entity,
-    position: Vec2,
+    position: &Vec2,
     _rotation: &f32,
-    velocity: Vec2,
-    spatial_index: &SpatialIndex<Entity>,
+    velocity: &Vec2,
+    nearest: &[(&Entity, &Vec2, &Vec2)],
     cohesion_distance: f32,
     max_speed: f32,
     max_force: f32,
 ) -> Vec2 {
     let mut average_position = Vec2::ZERO;
     let mut count = 0;
-    for result in spatial_index.query(position, cohesion_distance) {
-        average_position += *result.position;
-        count += 1;
+
+    for (_, other_position, _) in nearest {
+        let distance = (*position - **other_position).length();
+        if distance < cohesion_distance {
+            average_position += **other_position;
+            count += 1;
+        }
     }
+
     if count > 0 {
         average_position /= count as f32;
         if average_position.length() > 0.0 {
-            get_seek_force(position, velocity, average_position, max_speed, max_force)
+            get_seek_force(*position, *velocity, average_position, max_speed, max_force)
         } else {
             Vec2::ZERO
         }
@@ -207,6 +229,7 @@ fn calculate_avoidance_force(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[inline(always)]
 fn get_icon_velocity(
     entity: Entity,
     position: &Vec2,
@@ -218,12 +241,12 @@ fn get_icon_velocity(
     target_position: &Vec2,
     icon_type: &IconType,
     _query: &Query<RoamingQuery>,
-) -> Vec2 {
+) -> (Duration, Vec2) {
     let mut max_force = settings.max_force;
     let mut max_speed = settings.max_speed;
 
     if icon_type.0 == Type::Captured {
-        return Vec2::ZERO;
+        return (Duration::default(), Vec2::ZERO);
     }
 
     if icon_type.0 == Type::Follower {
@@ -231,54 +254,59 @@ fn get_icon_velocity(
         max_force = settings.seek_max_force;
     }
 
+    let start = Instant::now();
+
+    let nearest = spatial_index
+        .simple_query(*position, settings.collision_distance)
+        .collect::<Vec<_>>();
+
     let collision_force = get_separation_force(
         entity,
-        *position,
+        position,
         rotation,
-        *velocity,
-        spatial_index,
+        velocity,
+        &nearest,
         settings.collision_distance,
         max_speed,
         max_force,
     );
     let separation_force = get_separation_force(
         entity,
-        *position,
+        position,
         rotation,
-        *velocity,
-        spatial_index,
+        velocity,
+        &nearest,
         settings.collision_distance,
         max_speed,
         max_force,
     );
     let alignment_force = get_alignment_force(
         entity,
-        *position,
+        position,
         rotation,
-        *velocity,
-        spatial_index,
+        velocity,
+        &nearest,
         settings.alignment_distance,
         max_speed,
         max_force,
     );
     let cohesion_force = get_cohesion_force(
         entity,
-        *position,
+        position,
         rotation,
-        *velocity,
-        spatial_index,
+        velocity,
+        &nearest,
         settings.cohesion_distance,
         max_speed,
         max_force,
     );
 
+    let duration = start.elapsed();
+
     let mut player_avoidance_force = Vec2::ZERO;
     if icon_type.0 != Type::Follower {
         // let force = get_seek_force(*position, *velocity, *target_position, max_speed, max_force);
         let mut desired = *target_position - *position;
-        if desired == Vec2::ZERO {
-            return Vec2::ZERO;
-        }
         if desired.length() < settings.player_avoidance_distance {
             desired = desired.normalize();
             desired *= -1.0; // reverse?
@@ -358,7 +386,7 @@ fn get_icon_velocity(
         velocity.y = 0.0;
     }
 
-    velocity
+    (duration, velocity)
 }
 
 fn update_icon_roaming_velocity(
@@ -386,28 +414,33 @@ fn update_icon_roaming_velocity(
         })
         .unwrap();
 
+    let mut total_duration = Duration::default();
+
     let velocities = query
         .iter()
         .map(
             |(entity, IconTransform { position, rotation }, velocity, icon_type)| {
-                (
+                let (duration, velocity) = get_icon_velocity(
                     entity,
-                    get_icon_velocity(
-                        entity,
-                        position,
-                        rotation,
-                        &velocity.0,
-                        &spatial_index.0,
-                        &settings,
-                        &boundaries,
-                        player_position,
-                        icon_type,
-                        &query,
-                    ),
-                )
+                    position,
+                    rotation,
+                    &velocity.0,
+                    &spatial_index.0,
+                    &settings,
+                    &boundaries,
+                    player_position,
+                    icon_type,
+                    &query,
+                );
+
+                total_duration += duration;
+
+                (entity, velocity)
             },
         )
         .collect::<Vec<(Entity, Vec2)>>();
+
+    info!("duration: {:?}", total_duration);
 
     for (entity, velocity) in velocities.into_iter() {
         if let Ok((_, mut icon_transform, mut icon_velocity, icon_type)) = query.get_mut(entity) {

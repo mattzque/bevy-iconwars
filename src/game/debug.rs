@@ -1,7 +1,10 @@
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::{
+    egui::{self, CursorIcon},
+    EguiContexts, EguiPlugin,
+};
 
-use super::settings::SettingsResource;
+use super::{settings::SettingsResource, states::GameState};
 
 #[derive(Resource, Default)]
 pub struct ShowDebug {
@@ -29,7 +32,18 @@ pub fn render_settings_gui(
     mut settings: ResMut<SettingsResource>,
     mut contexts: EguiContexts,
     show_debug: Res<ShowDebug>,
+    state: Res<State<GameState>>,
 ) {
+    if *state == GameState::GameRunning {
+        contexts.ctx_mut().output_mut(|o| {
+            o.cursor_icon = CursorIcon::Crosshair;
+        });
+    } else {
+        contexts.ctx_mut().output_mut(|o| {
+            o.cursor_icon = CursorIcon::Default;
+        });
+    }
+
     if !show_debug.show {
         return;
     }
@@ -55,6 +69,10 @@ pub fn render_settings_gui(
         ui.add(
             egui::Slider::new(&mut settings.velocity_time_scale, 0.0..=4000.0)
                 .text("Velocity Time Scale"),
+        );
+        ui.add(
+            egui::Slider::new(&mut settings.max_force_distance, 32.0..=256.0)
+                .text("Max Distance (px)"),
         );
         ui.add(
             egui::Slider::new(&mut settings.collision_distance, 5.0..=150.0)
