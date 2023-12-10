@@ -109,7 +109,12 @@ fn update_music_playback_system(
     if let Ok((sink, mut handle, mut player)) = query.get_single_mut() {
         if sink.empty() {
             player.0 += 1;
-            *handle = resource.music.get(player.0).unwrap().clone();
+            if player.0 + 1 >= resource.music.len() {
+                player.0 = 0;
+            }
+            if let Some(h) = resource.music.get(player.0) {
+                *handle = h.clone();
+            }
         }
     }
 }
