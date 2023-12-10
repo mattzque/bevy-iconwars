@@ -367,7 +367,7 @@ You make more points the more followers you bring at once.
 You take more damage the more followers you have.
     
 Controls:
-Up / A - Move Forward 
+Up / W - Move Forward 
 Down / S - Move Backward 
 Left / A - Strafe Left
 Right / D - Strafe Right

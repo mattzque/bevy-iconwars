@@ -17,7 +17,7 @@ mostly based around a simple boids simulation.
 
 **Controls**
     
-* Up / A - Move Forward 
+* Up / W - Move Forward 
 * Down / S - Move Backward 
 * Left / A - Strafe Left
 * Right / D - Strafe Right
