@@ -28,9 +28,18 @@ mostly based around a simple boids simulation.
 You can also press `O` to open up the development settings, most of them
 can be adjusted in real-time, but it may crash the game.
 
+## TODO
+
+* [ ] fix controls (up should always be up from the camera point of view)
+* [ ] change sound effect spamming (n projectiles playing 1 effect instead of n)
+* [ ] escape on web also closes fullscreen, add other key for pause screen
+* [ ] make captured hud less obstructive (make smaller and add more transparency)
+* [ ] add more animations to dropping off icons
+* [ ] improve win condition to be more satisfying somehow (make the grid full of icons, ...)
+
 ## Changelog
 
-* `v0.1.3` removed some verbose debug logging; fixed player allowed to shoot in dropzone
+* `v0.1.3` (**this version was the Bevy Jam entry**) removed some verbose debug logging; fixed player allowed to shoot in dropzone
 * `v0.1.2` fixed a bug where the game crashed when all music tracks were played
 * `v0.1.1` initial release
 
