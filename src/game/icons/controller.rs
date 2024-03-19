@@ -53,13 +53,13 @@ fn update_player_rotation(
 
 fn update_key_input(
     time: Res<Time>,
-    mut query: Query<(Entity, &IconTransform, &mut IconVelocity), With<IconPlayerController>>,
+    mut query: Query<(Entity, &mut IconVelocity), With<IconPlayerController>>,
     keys: Res<ButtonInput<KeyCode>>,
     settings: Res<SettingsResource>,
 ) {
     let dt = time.delta_seconds();
     // info!("print dt = {:?}", dt);
-    if let Ok((_entity, transform, mut velocity_)) = query.get_single_mut() {
+    if let Ok((_entity, mut velocity_)) = query.get_single_mut() {
         // let turn = if keys.any_pressed([KeyCode::KeyQ]) {
         //     // turn left
         //     Some(1.0)
