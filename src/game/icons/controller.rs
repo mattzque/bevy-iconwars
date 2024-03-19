@@ -53,17 +53,17 @@ fn update_player_rotation(
 
 fn update_key_input(
     time: Res<Time>,
-    mut query: Query<(Entity, &mut IconTransform, &mut IconVelocity), With<IconPlayerController>>,
+    mut query: Query<(Entity, &IconTransform, &mut IconVelocity), With<IconPlayerController>>,
     keys: Res<ButtonInput<KeyCode>>,
     settings: Res<SettingsResource>,
 ) {
     let dt = time.delta_seconds();
     // info!("print dt = {:?}", dt);
     if let Ok((_entity, transform, mut velocity_)) = query.get_single_mut() {
-        // let turn = if keys.any_pressed([KeyCode::Left, KeyCode::A]) {
+        // let turn = if keys.any_pressed([KeyCode::KeyQ]) {
         //     // turn left
         //     Some(1.0)
-        // } else if keys.any_pressed([KeyCode::Right, KeyCode::D]) {
+        // } else if keys.any_pressed([KeyCode::KeyE]) {
         //     // turn right
         //     Some(-1.0)
         // } else {
@@ -75,7 +75,8 @@ fn update_key_input(
         //     transform.rotation = normalize_angle(transform.rotation);
         // }
 
-        let rotation = transform.rotation;
+        // let rotation = transform.rotation;
+        let rotation = 0.0; // transform.rotation;
 
         let r = std::f32::consts::PI / 2.0;
         let forward_vector = Vec2::new((rotation - r).cos(), (rotation - r).sin());

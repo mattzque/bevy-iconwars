@@ -30,7 +30,7 @@ can be adjusted in real-time, but it may crash the game.
 
 ## TODO
 
-* [ ] fix controls (up should always be up from the camera point of view)
+* [X] fix controls (up should always be up from the camera point of view)
 * [ ] change sound effect spamming (n projectiles playing 1 effect instead of n)
 * [ ] escape on web also closes fullscreen, add other key for pause screen
 * [ ] make captured hud less obstructive (make smaller and add more transparency)
@@ -39,6 +39,7 @@ can be adjusted in real-time, but it may crash the game.
 
 ## Changelog
 
+* `v0.1.4` update bevy version and lock movement rotation
 * `v0.1.3` (**this version was the Bevy Jam entry**) removed some verbose debug logging; fixed player allowed to shoot in dropzone
 * `v0.1.2` fixed a bug where the game crashed when all music tracks were played
 * `v0.1.1` initial release

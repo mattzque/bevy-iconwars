@@ -87,7 +87,7 @@ impl Default for SettingsResource {
             seek_max_speed: 0.78,
             seek_max_force: 0.08,
 
-            controller_turn_speed: 3.85,
+            controller_turn_speed: 1.85,
             controller_acceleration: 35.0,
             controller_dampening: 210.0,
             controller_max_speed: 100.0,
