@@ -665,7 +665,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_iconwars"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "anyhow",
  "bevy",

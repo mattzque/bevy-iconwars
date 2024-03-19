@@ -2,4 +2,4 @@
 BEVY_ASSET_ROOT = "."
 
 [build]
-rustflags = ["-Z", "threads=8"]
+rustflags = ["-Z", "threads=8", "--cfg=web_sys_unstable_apis"]

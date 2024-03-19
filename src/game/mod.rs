@@ -4,7 +4,6 @@ use bevy::prelude::*;
 mod assets;
 mod audio;
 mod camera;
-#[cfg(not(target_arch = "wasm32"))]
 mod debug;
 mod hud;
 mod icons;
@@ -28,8 +27,6 @@ impl Plugin for GamePlugin {
             hud::HudPlugin,
             audio::AudioPlugin,
         ));
-        #[cfg(not(target_arch = "wasm32"))]
-        app.add_plugins(debug::DebugPlugin);
-        app.add_plugins(FrameTimeDiagnosticsPlugin);
+        app.add_plugins((debug::DebugPlugin, FrameTimeDiagnosticsPlugin));
     }
 }
