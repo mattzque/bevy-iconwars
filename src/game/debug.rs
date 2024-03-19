@@ -22,8 +22,8 @@ impl Plugin for DebugPlugin {
     }
 }
 
-pub fn toggle_debug(keys: Res<Input<KeyCode>>, mut show_debug: ResMut<ShowDebug>) {
-    if keys.just_pressed(KeyCode::O) {
+pub fn toggle_debug(keys: Res<ButtonInput<KeyCode>>, mut show_debug: ResMut<ShowDebug>) {
+    if keys.just_pressed(KeyCode::KeyO) {
         show_debug.show = !show_debug.show;
     }
 }

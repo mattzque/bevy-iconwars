@@ -1,4 +1,3 @@
-use bevy::core_pipeline::clear_color::ClearColorConfig;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::view::RenderLayers;
@@ -58,12 +57,10 @@ fn setup_cameras(mut commands: Commands) {
 
     commands.spawn((
         Camera2dBundle {
-            camera_2d: Camera2d {
-                clear_color: ClearColorConfig::None, // ::Custom(Color::rgba(0.0, 0.0, 0.0, 0.0)),
-            },
             camera: Camera {
                 order: 1,
                 is_active: true,
+                clear_color: ClearColorConfig::None,
                 ..Default::default()
             },
             ..Default::default()

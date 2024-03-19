@@ -1,7 +1,5 @@
 use bevy::core_pipeline::core_2d::Transparent2d;
 use bevy::ecs::query::QueryItem;
-use bevy::ecs::query::ROQueryItem;
-use bevy::ecs::system::lifetimeless::SRes;
 use bevy::ecs::system::lifetimeless::*;
 use bevy::ecs::system::SystemParamItem;
 use bevy::prelude::*;
@@ -34,11 +32,11 @@ pub struct GpuIconInstanceData {
 }
 
 impl ExtractComponent for IconInstanceData {
-    type Query = &'static IconInstanceData;
-    type Filter = ();
+    type QueryData = &'static IconInstanceData;
+    type QueryFilter = ();
     type Out = GpuIconInstanceData;
 
-    fn extract_component(item: QueryItem<'_, Self::Query>) -> Option<GpuIconInstanceData> {
+    fn extract_component(item: QueryItem<'_, Self::QueryData>) -> Option<GpuIconInstanceData> {
         Some(GpuIconInstanceData {
             data: item.instances_data(),
             n_instances: item.n_instances as usize,
@@ -233,11 +231,10 @@ impl FromWorld for CustomPipeline {
             ty: BindingType::Sampler(SamplerBindingType::Filtering),
             count: None,
         };
-        let texture_bind_group_layout =
-            render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                entries: &[texture_uniform_layout_entry, texture_sampler_layout_entry],
-                label: Some("icons_texture_array"),
-            });
+        let texture_bind_group_layout = render_device.create_bind_group_layout(
+            Some("icons_texture_array"),
+            &[texture_uniform_layout_entry, texture_sampler_layout_entry],
+        );
 
         CustomPipeline {
             shader,
@@ -310,14 +307,14 @@ type DrawCustom = (
 pub struct SetTextureBindGroup<const I: usize>;
 impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetTextureBindGroup<I> {
     type Param = SRes<TextureBindGroup>;
-    type ViewWorldQuery = ();
-    type ItemWorldQuery = ();
+    type ViewQuery = ();
+    type ItemQuery = ();
 
     #[inline]
     fn render<'w>(
         _item: &P,
         _view: (),
-        _item_query: ROQueryItem<'w, Self::ItemWorldQuery>,
+        _instance_buffer: Option<()>,
         texture_bind_group: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
@@ -333,14 +330,14 @@ pub struct DrawMesh2dInstanced;
 
 impl<P: PhaseItem> RenderCommand<P> for DrawMesh2dInstanced {
     type Param = (SRes<RenderAssets<Mesh>>, SRes<RenderMesh2dInstances>);
-    type ViewWorldQuery = ();
-    type ItemWorldQuery = Read<InstanceBuffer>;
+    type ViewQuery = ();
+    type ItemQuery = Read<InstanceBuffer>;
 
     #[inline]
     fn render<'w>(
         item: &P,
         _view: (),
-        instance_buffer: &'w InstanceBuffer,
+        instance_buffer: Option<&'w InstanceBuffer>,
         (meshes, render_mesh2d_instances): SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
@@ -353,6 +350,9 @@ impl<P: PhaseItem> RenderCommand<P> for DrawMesh2dInstanced {
             return RenderCommandResult::Failure;
         };
         let Some(gpu_mesh) = meshes.get(*mesh_asset_id) else {
+            return RenderCommandResult::Failure;
+        };
+        let Some(instance_buffer) = instance_buffer else {
             return RenderCommandResult::Failure;
         };
 

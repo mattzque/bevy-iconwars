@@ -182,7 +182,7 @@ impl Command for ScoreScreen {
         world.resource_scope::<FontResource, ()>(|world, resource| {
             world.resource_scope::<DiagnosticsStore, ()>(|world, diagnostics| {
                 let mut contents = format!("Score: {}", self.score_line()); // \nFPS: {:.2}", self.score_line(), diagn);
-                if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
+                if let Some(fps) = diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS) {
                     if let Some(value) = fps.smoothed() {
                         contents.push_str(&format!("\n{:.2} FPS", value));
                     }
@@ -388,6 +388,9 @@ impl Command for TitleScreen {
                                 height: Val::Vh(100.0),
                                 justify_content: JustifyContent::Center,
                                 align_items: AlignItems::Center,
+                                position_type: PositionType::Absolute,
+                                top: Val::Px(0.0),
+                                left: Val::Px(0.0),
                                 ..Default::default()
                             },
                             background_color: Color::hex("#12141844").unwrap().into(), // Color::rgba(1.0, 0.0, 0.0, 0.1).into(),
@@ -462,7 +465,7 @@ impl Command for TitleScreen {
                                                     color: Color::hex("#adbacb").unwrap(),
                                                 },
                                             )
-                                            .with_text_alignment(TextAlignment::Center),
+                                            .with_text_justify(JustifyText::Center),
                                             RenderLayers::layer(CAMERA_LAYER_UI),
                                         ));
                                     });
@@ -645,7 +648,7 @@ impl Command for GameOverScreen {
                                                 color: Color::hex("#adbacb").unwrap(),
                                             },
                                         )
-                                        .with_text_alignment(TextAlignment::Center),
+                                            .with_text_justify(JustifyText::Center),
                                         RenderLayers::layer(CAMERA_LAYER_UI),
                                     ));
                                 });
@@ -886,7 +889,7 @@ fn show_icon_follower_added_system(
 }
 
 fn toggle_game_pause_system(
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     current_state: Res<State<GameState>>,
     mut state: ResMut<NextState<GameState>>,
 ) {

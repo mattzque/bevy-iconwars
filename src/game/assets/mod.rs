@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use bevy::asset::RecursiveDependencyLoadState;
 use bevy::prelude::*;
+use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::render::texture::{ImageFilterMode, ImageSampler, ImageSamplerDescriptor};
 
@@ -157,8 +158,7 @@ fn assets_loaded_system(
         TextureDimension::D2,
         data,
         TextureFormat::Rgba8UnormSrgb,
-        // TextureFormat::Rgba8Unorm,
-        // TextureFormat::// Rgba8UnormSrgb,
+        RenderAssetUsages::RENDER_WORLD, // unload / only loaded in render world
     );
     texture_array.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
         mag_filter: ImageFilterMode::Nearest,

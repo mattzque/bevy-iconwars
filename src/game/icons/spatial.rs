@@ -1,7 +1,6 @@
+use bevy::ecs::entity::{Entity, EntityHashMap, EntityHashSet};
 use bevy::math::Vec2;
-use bevy::utils::{EntityHashMap, EntityHashSet};
 use std::fmt::Debug;
-use std::hash::Hash;
 
 /// Create Iterator over x and y (cartesian product) between -distance and +distance offset                                                                                                         
 fn offset_iter(x: i16, y: i16, distance: i16) -> impl Iterator<Item = (i16, i16)> {
@@ -11,34 +10,24 @@ fn offset_iter(x: i16, y: i16, distance: i16) -> impl Iterator<Item = (i16, i16)
 }
 
 #[derive(Debug, Clone)]
-pub struct SpatialQueryResult<T> {
-    pub key: T,
+pub struct SpatialQueryResult {
+    pub key: Entity,
     pub position: Vec2,
     pub velocity: Vec2,
     pub distance: f32,
 }
 
-#[derive(Debug, Clone)]
-pub struct SpatialQuery2Result<'a, T> {
-    pub key: T,
-    pub position: &'a Vec2,
-    pub distance: f32,
-}
-
-pub struct SpatialIndex<T> {
+pub struct SpatialIndex {
     pub min: Vec2,
     pub max: Vec2,
     pub grid_x: usize,
     pub grid_y: usize,
     pub len: usize,
     pub cell_size: f32,
-    pub entities: Vec<EntityHashSet<T>>,
-    pub by_entity: EntityHashMap<T, (usize, Vec2, Vec2)>,
+    pub entities: Vec<EntityHashSet>,
+    pub by_entity: EntityHashMap<(usize, Vec2, Vec2)>,
 }
-impl<T> SpatialIndex<T>
-where
-    T: Hash + Eq + Clone + Debug,
-{
+impl SpatialIndex {
     pub fn new(min: Vec2, max: Vec2, cell_size: f32) -> Self {
         let size = max - min;
         let grid_x = (size.x / cell_size).ceil() as usize;
@@ -62,7 +51,7 @@ where
         self.grid_x * y + x
     }
 
-    pub fn insert(&mut self, entity: T, position: Vec2, velocity: Vec2) {
+    pub fn insert(&mut self, entity: Entity, position: Vec2, velocity: Vec2) {
         if let Some((old_index, old_position, old_velocity)) = self.by_entity.get(&entity) {
             if *old_position != position || *old_velocity != velocity {
                 self.entities[*old_index].remove(&entity);
@@ -72,7 +61,7 @@ where
 
         let index = self.pos_to_index(position);
         if index > 0 && index < self.len {
-            self.entities[index].insert(entity.clone());
+            self.entities[index].insert(entity);
             self.by_entity.insert(entity, (index, position, velocity));
         } else {
             self.by_entity.remove(&entity);
@@ -83,7 +72,7 @@ where
         &self,
         position: Vec2,
         distance: f32,
-    ) -> impl Iterator<Item = (&T, &Vec2, &Vec2)> + '_ {
+    ) -> impl Iterator<Item = (&Entity, &Vec2, &Vec2)> + '_ {
         let grid_distance = (distance / self.cell_size).ceil() as i16;
 
         let x = ((position.x - self.min.x) / self.cell_size) as i16;
@@ -108,7 +97,7 @@ where
         &self,
         position: Vec2,
         distance: f32,
-    ) -> impl Iterator<Item = SpatialQueryResult<T>> + '_ {
+    ) -> impl Iterator<Item = SpatialQueryResult> + '_ {
         let grid_distance = (distance / self.cell_size).ceil() as i16;
 
         let x = ((position.x - self.min.x) / self.cell_size) as i16;
@@ -128,7 +117,7 @@ where
                 let distance_to_other = (position - other_position).length();
                 if distance_to_other <= distance {
                     Some(SpatialQueryResult {
-                        key: entity.clone(),
+                        key: *entity,
                         position: other_position,
                         velocity: *other_velocity,
                         distance: distance_to_other,

@@ -22,7 +22,7 @@ pub struct IconSheetResource {
 }
 
 #[derive(Resource)]
-pub struct SpatialIndexResource(pub SpatialIndex<Entity>);
+pub struct SpatialIndexResource(pub SpatialIndex);
 
 #[derive(Resource, Default)]
 pub struct HoveredIcon(pub Option<Entity>);

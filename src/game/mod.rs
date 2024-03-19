@@ -17,7 +17,7 @@ pub struct GamePlugin;
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(settings::SettingsResource::default());
-        app.add_state::<states::GameState>();
+        app.init_state::<states::GameState>();
         app.add_plugins((
             assets::GameAssetPlugin,
             world::WorldPlugin,

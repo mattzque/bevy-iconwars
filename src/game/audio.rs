@@ -1,4 +1,3 @@
-use bevy::audio::VolumeLevel;
 use bevy::prelude::*;
 use bevy::{audio::PlaybackMode, audio::Volume};
 
@@ -51,7 +50,7 @@ impl Plugin for AudioPlugin {
         );
         app.add_systems(
             Update,
-            update_sound_volume.run_if(resource_changed::<AudioSettingsResource>()),
+            update_sound_volume.run_if(resource_changed::<AudioSettingsResource>),
         );
         app.add_systems(Update, update_music_playback_system);
     }
@@ -75,10 +74,11 @@ fn init_music_playback_system(
                 source: resource.music.first().unwrap().clone(),
                 settings: PlaybackSettings {
                     mode: PlaybackMode::Once,
-                    volume: Volume::Absolute(VolumeLevel::new(audio_settings.music_volume())),
+                    volume: Volume::new(audio_settings.music_volume()),
                     speed: 1.0,
                     paused: false,
                     spatial: false,
+                    ..Default::default()
                 },
             },
             MusicPlayer(0),
@@ -145,10 +145,11 @@ fn play_sound_effects_system(
                 source: resource.shoot.clone(),
                 settings: PlaybackSettings {
                     mode: PlaybackMode::Once,
-                    volume: Volume::Absolute(VolumeLevel::new(audio_settings.effects_volume())),
+                    volume: Volume::new(audio_settings.effects_volume()),
                     speed: 1.0,
                     paused: false,
                     spatial: false,
+                    ..Default::default()
                 },
             },
             SoundEffectTag,
@@ -161,10 +162,11 @@ fn play_sound_effects_system(
                 source: resource.hit.clone(),
                 settings: PlaybackSettings {
                     mode: PlaybackMode::Once,
-                    volume: Volume::Absolute(VolumeLevel::new(audio_settings.effects_volume())),
+                    volume: Volume::new(audio_settings.effects_volume()),
                     speed: 1.0,
                     paused: false,
                     spatial: false,
+                    ..Default::default()
                 },
             },
             SoundEffectTag,
@@ -177,10 +179,11 @@ fn play_sound_effects_system(
                 source: resource.capture.clone(),
                 settings: PlaybackSettings {
                     mode: PlaybackMode::Once,
-                    volume: Volume::Absolute(VolumeLevel::new(audio_settings.effects_volume())),
+                    volume: Volume::new(audio_settings.effects_volume()),
                     speed: 1.0,
                     paused: false,
                     spatial: false,
+                    ..Default::default()
                 },
             },
             SoundEffectTag,
@@ -193,10 +196,11 @@ fn play_sound_effects_system(
                 source: resource.damage.clone(),
                 settings: PlaybackSettings {
                     mode: PlaybackMode::Once,
-                    volume: Volume::Absolute(VolumeLevel::new(audio_settings.effects_volume())),
+                    volume: Volume::new(audio_settings.effects_volume()),
                     speed: 1.0,
                     paused: false,
                     spatial: false,
+                    ..Default::default()
                 },
             },
             SoundEffectTag,

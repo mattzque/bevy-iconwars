@@ -1,7 +1,6 @@
 use bevy::{
     asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext},
     prelude::*,
-    reflect::TypeUuid,
     utils::BoxedFuture,
 };
 use serde::{Deserialize, Serialize};
@@ -36,8 +35,7 @@ pub struct IconSheet {
     pub tiles: Vec<Icon>,
 }
 
-#[derive(Asset, Debug, TypeUuid, TypePath)]
-#[uuid = "bb63465d-326f-47b6-8c49-008128f3e863"]
+#[derive(Asset, Debug, TypePath)]
 pub struct IconSheetAsset(pub Vec<IconSheet>);
 
 #[derive(Default)]

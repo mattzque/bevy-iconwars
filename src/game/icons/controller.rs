@@ -54,7 +54,7 @@ fn update_player_rotation(
 fn update_key_input(
     time: Res<Time>,
     mut query: Query<(Entity, &mut IconTransform, &mut IconVelocity), With<IconPlayerController>>,
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     settings: Res<SettingsResource>,
 ) {
     let dt = time.delta_seconds();
@@ -82,19 +82,19 @@ fn update_key_input(
         let strafe_vector = Vec2::new(rotation.cos(), rotation.sin());
 
         let mut accel = Vec2::ZERO;
-        if keys.any_pressed([KeyCode::Up, KeyCode::W]) {
+        if keys.any_pressed([KeyCode::ArrowUp, KeyCode::KeyW]) {
             // forward
             accel += forward_vector * -1.0;
         }
-        if keys.any_pressed([KeyCode::Down, KeyCode::S]) {
+        if keys.any_pressed([KeyCode::ArrowDown, KeyCode::KeyS]) {
             // backward
             accel += forward_vector * 1.0;
         }
-        if keys.any_pressed([KeyCode::Left, KeyCode::A]) {
+        if keys.any_pressed([KeyCode::ArrowLeft, KeyCode::KeyA]) {
             // strafe left
             accel += strafe_vector * -1.0;
         }
-        if keys.any_pressed([KeyCode::Right, KeyCode::D]) {
+        if keys.any_pressed([KeyCode::ArrowRight, KeyCode::KeyD]) {
             // strafe right
             accel += strafe_vector * 1.0;
         }

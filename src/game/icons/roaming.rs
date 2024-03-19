@@ -231,7 +231,7 @@ fn get_icon_velocity(
     position: &Vec2,
     rotation: &f32,
     velocity: &Vec2,
-    spatial_index: &SpatialIndex<Entity>,
+    spatial_index: &SpatialIndex,
     settings: &SettingsResource,
     boundaries: &WorldBoundaryResource,
     target_position: &Vec2,

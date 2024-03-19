@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy::render::batching::NoAutomaticBatching;
-use bevy::render::mesh::shape;
 use bevy::render::view::{NoFrustumCulling, RenderLayers};
 use bevy::sprite::Mesh2dHandle;
 use rand::prelude::*;
@@ -216,9 +215,8 @@ fn init_icons_system(
 
     // info!("Spawned {} icons", count);
 
-    let mesh = Mesh::from(shape::Quad {
-        size: Vec2::splat(ICON_SIZE),
-        flip: false,
+    let mesh = Mesh::from(Rectangle {
+        half_size: Vec2::splat(ICON_SIZE / 2.0),
     });
     let mesh_handle = meshes.add(mesh);
     commands.spawn((
