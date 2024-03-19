@@ -39,7 +39,7 @@ can be adjusted in real-time, but it may crash the game.
 
 ## Changelog
 
-* `v0.1.6` fix issue with wasm build of bevy_egui
+* `v0.1.8` fix issue with wasm build of bevy_egui
 * `v0.1.4` update bevy version and lock movement rotation
 * `v0.1.3` (**this version was the Bevy Jam entry**) removed some verbose debug logging; fixed player allowed to shoot in dropzone
 * `v0.1.2` fixed a bug where the game crashed when all music tracks were played
